@@ -84,7 +84,7 @@ const Index = () => {
           onClick={() => setIsCartOpen(true)}
           className="bg-brand hover:bg-brand-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg"
         >
-          <ShoppingCart className="h-6 w-6" />
+          <ShoppingCart />
           {itemCount > 0 && (
             <Badge
               variant="destructive"
