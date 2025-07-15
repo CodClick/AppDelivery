@@ -20,7 +20,7 @@ import Api from "./pages/Api";
 import NotFound from "./pages/NotFound";
 import ShoppingCart from "./components/ShoppingCart";
 import Checkout from "./pages/Checkout";
-import AppLayout from "@/layouts/AppLayout"; // importa o layout
+import AppLayout from "@/components/layouts/AppLayout"; // importa o layout
 
 const queryClient = new QueryClient();
 
