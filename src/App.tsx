@@ -53,7 +53,17 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               {/* Públicas */}
-              <Route path="/" element={<Index />} />
+              <Route
+  path="/"
+  element={
+    <PrivateRoute>
+      <AppLayout>
+        <Index />
+      </AppLayout>
+    </PrivateRoute>
+  }
+/>
+
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/checkout" element={<Checkout />} />
