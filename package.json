@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "start": "serve dist -l 3000",
-  "lint": "eslint ."
-},
+    "dev": "vite",
+    "build": "vite build",
+    "start": "serve dist -l 3000",
+    "lint": "eslint ."
+  },
   "dependencies": {
+    "serve": "^14.2.0"
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
