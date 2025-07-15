@@ -3,26 +3,26 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copia arquivos e instala dependências
-COPY package.json package-lock.json ./
+# Copia package.json e package-lock.json e instala dependências
+COPY package*.json ./
 RUN npm install
 
-# Copia restante do projeto e roda o build
+# Copia o restante do código e faz o build
 COPY . .
 RUN npm run build
 
-# Etapa 2: Runtime leve
+# Etapa 2: Imagem final com apenas o necessário
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copia apenas os arquivos necessários da etapa de build
+# Copia o resultado da build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
-# Exponha a porta usada pelo seu app (ajuste se necessário)
-EXPOSE 4173
+# Porta que seu app roda (mude se for diferente)
+EXPOSE 3000
 
-# Comando de execução
+# Comando para rodar o app — ajuste se necessário!
 CMD ["npm", "run", "preview"]
