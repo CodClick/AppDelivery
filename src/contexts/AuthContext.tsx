@@ -1,15 +1,14 @@
-
 import React, { createContext } from "react";
-import { User, UserCredential } from "firebase/auth";
 import { useAuthState } from "@/hooks/useAuthState";
 import { signUp as authSignUp, signIn as authSignIn, logOut as authLogOut } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
+import { User } from "@supabase/supabase-js"; // 👈 substitui o User do firebase
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, name?: string, phone?: string) => Promise<UserCredential>;
-  signIn: (email: string, password: string) => Promise<UserCredential>;
+  signUp: (email: string, password: string, name?: string, phone?: string) => Promise<any>; // 👈 não é mais UserCredential
+  signIn: (email: string, password: string) => Promise<any>;
   logOut: () => Promise<void>;
 }
 
