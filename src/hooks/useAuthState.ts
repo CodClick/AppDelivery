@@ -27,3 +27,4 @@ export function useAuthState() {
 
   return { currentUser, loading };
 }
+
