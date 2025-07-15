@@ -1,15 +1,28 @@
-# Etapa 1: Build com Bun
-FROM oven/bun:1.1 AS builder
+# Etapa 1: Builder
+FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+# Copia arquivos e instala dependências
+COPY package.json package-lock.json ./
+RUN npm install
+
+# Copia restante do projeto e roda o build
 COPY . .
-RUN bun install
-RUN bun run build
+RUN npm run build
 
-# Etapa 2: Runtime com Node
-FROM node:20-alpine
+# Etapa 2: Runtime leve
+FROM node:20-alpine AS production
+
 WORKDIR /app
-COPY --from=builder /app /app
-RUN npm install -g vite
 
+# Copia apenas os arquivos necessários da etapa de build
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+
+# Exponha a porta usada pelo seu app (ajuste se necessário)
 EXPOSE 4173
-CMD ["vite", "preview", "--host", "0.0.0.0"]
+
+# Comando de execução
+CMD ["npm", "run", "preview"]
