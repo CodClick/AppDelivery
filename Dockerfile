@@ -23,4 +23,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Comando que inicia o servidor de arquivos estáticos na porta 3000
-CMD ["serve", "dist", "-l", "3000"]
+CMD ["serve", "dist", "-l", "3000", "-s"]
