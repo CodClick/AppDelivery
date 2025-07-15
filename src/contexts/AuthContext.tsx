@@ -3,6 +3,7 @@ import { useAuthState } from "@/hooks/useAuthState";
 import { signUp as authSignUp, signIn as authSignIn, logOut as authLogOut } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js"; // 👈 substitui o User do firebase
+import { useNavigate } from "react-router-dom"; // 👈 adicione isso
 
 interface AuthContextType {
   currentUser: User | null;
