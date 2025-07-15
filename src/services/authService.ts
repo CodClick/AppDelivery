@@ -35,8 +35,19 @@ export async function signIn(email: string, password: string): Promise<any> {
 
   if (error) throw error;
 
-  return data;
+  // Busca o role do usuário
+  const userId = data.user.id;
+  const { data: userData, error: userError } = await supabase
+    .from("usuarios")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  if (userError) throw userError;
+
+  return { ...data, role: userData.role };
 }
+
 
 export async function logOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
