@@ -1,38 +1,44 @@
+// services/authService.ts
+import { supabase } from "@/lib/supabaseClient";
 
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut,
-  UserCredential,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { saveUserToSupabase, updateUserLastSignIn } from "./supabaseService";
+export async function signUp(
+  email: string,
+  password: string,
+  name?: string,
+  phone?: string
+): Promise<any> {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
 
-export async function signUp(email: string, password: string, name?: string, phone?: string): Promise<UserCredential> {
-  const result = await createUserWithEmailAndPassword(auth, email, password);
-  
-  if (result.user) {
-    await saveUserToSupabase({
-      id: result.user.uid,
-      email: result.user.email || '',
-      name,
-      phone,
+  if (error) throw error;
+
+  const user = data.user;
+
+  if (user && name) {
+    await supabase.from("usuarios").upsert({
+      id: user.id,
+      nome: name,
+      role: "cliente", // padrão para quem faz signup via cardápio
     });
   }
-  
-  return result;
+
+  return data;
 }
 
-export async function signIn(email: string, password: string): Promise<UserCredential> {
-  const result = await signInWithEmailAndPassword(auth, email, password);
-  
-  if (result.user) {
-    await updateUserLastSignIn(result.user.uid);
-  }
-  
-  return result;
+export async function signIn(email: string, password: string): Promise<any> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) throw error;
+
+  return data;
 }
 
 export async function logOut(): Promise<void> {
-  await signOut(auth);
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
