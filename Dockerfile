@@ -1,28 +1,28 @@
-# Etapa 1: Builder
+# Etapa 1: Build
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copia package.json e package-lock.json e instala dependências
+# Copia os arquivos de dependência e instala
 COPY package*.json ./
 RUN npm install
 
-# Copia o restante do código e faz o build
+# Copia o restante do código e roda o build
 COPY . .
 RUN npm run build
 
-# Etapa 2: Imagem final com apenas o necessário
+# Etapa 2: Runtime
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copia o resultado da build
+# Copia apenas o necessário para o runtime
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
-# Porta que seu app roda (mude se for diferente)
-EXPOSE 3000
+# Porta padrão do vite preview
+EXPOSE 4173
 
-# Comando para rodar o app — ajuste se necessário!
+# Comando que inicia o servidor estático
 CMD ["npm", "run", "preview"]
