@@ -114,6 +114,14 @@ const Login = () => {
             {loading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+        <div className="text-center mt-4">
+  <span className="text-sm text-gray-600">É dono de restaurante?</span>
+  <br />
+  <Link to="/admin-register" className="text-brand hover:underline font-medium">
+    Cadastre seu restaurante
+  </Link>
+</div>
+
       </div>
     </div>
   );
