@@ -57,6 +57,7 @@ const App = () => (
                 }
               />
               {/* Todas essas rotas abaixo agora usam AppLayout + PrivateRoute */}
+              <Route path="/admin-register" element={<AdminRegister />} />
               <Route
                 path="/admin-dashboard"
                 element={
