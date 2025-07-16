@@ -1,20 +1,7 @@
-// Exemplo de função de login com Supabase
 // services/authService.ts
 import { supabase } from "@/lib/supabaseClient";
 
-export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-  return data;
-}
-
-// services/authService.ts
-import { supabase } from "@/lib/supabaseClient";
-
+// ---------- SIGN UP CLIENTE ----------
 export async function signUp(
   email: string,
   password: string,
@@ -34,16 +21,32 @@ export async function signUp(
     await supabase.from("usuarios").upsert({
       id: user.id,
       nome: name,
-      role: "cliente", // padrão para quem faz signup via cardápio
+      role: "cliente", // padrão para quem se cadastra pelo cardápio
     });
   }
 
   return data;
 }
 
-// services/authService.ts
-import { supabase } from "@/lib/supabaseClient";
+// ---------- SIGN IN ----------
+export async function signIn(email: string, password: string): Promise<any> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
+  if (error) throw error;
+
+  return data;
+}
+
+// ---------- SIGN OUT ----------
+export async function logOut(): Promise<void> {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+// ---------- SIGN UP ADMIN ----------
 interface AdminSignupData {
   email: string;
   password: string;
