@@ -30,13 +30,21 @@ export async function signUp(
 // services/authService.ts
 import { supabase } from "@/lib/supabaseClient";
 
-export async function signUpAdmin(
-  email: string,
-  password: string,
-  name: string,
-  empresaNome: string,
-  empresaTelefone: string
-): Promise<any> {
+interface AdminSignupData {
+  email: string;
+  password: string;
+  nome: string;
+  empresa_nome: string;
+  empresa_telefone: string;
+}
+
+export async function signUpAdmin({
+  email,
+  password,
+  nome,
+  empresa_nome,
+  empresa_telefone,
+}: AdminSignupData): Promise<any> {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -49,45 +57,17 @@ export async function signUpAdmin(
 
   const { error: insertUserError } = await supabase.from("usuarios").insert({
     id: user.id,
-    nome: name,
+    nome,
     role: "admin",
   });
   if (insertUserError) throw insertUserError;
 
   const { error: insertEmpresaError } = await supabase.from("empresas").insert({
-    nome: empresaNome,
-    telefone: empresaTelefone,
+    nome: empresa_nome,
+    telefone: empresa_telefone,
     admin_id: user.id,
   });
   if (insertEmpresaError) throw insertEmpresaError;
 
   return data;
-}
-
-
-export async function signIn(email: string, password: string): Promise<any> {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-
-  // Busca o role do usuário
-  const userId = data.user.id;
-  const { data: userData, error: userError } = await supabase
-    .from("usuarios")
-    .select("role")
-    .eq("id", userId)
-    .single();
-
-  if (userError) throw userError;
-
-  return { ...data, role: userData.role };
-}
-
-
-export async function logOut(): Promise<void> {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
 }
