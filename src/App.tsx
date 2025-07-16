@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import ShoppingCart from "./components/ShoppingCart";
 import Checkout from "./pages/Checkout";
 import AppLayout from "@/components/layouts/AppLayout"; // importa o layout
+import AdminRegister from ./pages/AdminRegister;
 
 const queryClient = new QueryClient();
 
