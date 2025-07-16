@@ -48,6 +48,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/admin-register" element={<AdminRegister />} />
                <Route
                   path="/"
                   element={
@@ -57,7 +58,6 @@ const App = () => (
                 }
               />
               {/* Todas essas rotas abaixo agora usam AppLayout + PrivateRoute */}
-              <Route path="/admin-register" element={<AdminRegister />} />
               <Route
                 path="/admin-dashboard"
                 element={
