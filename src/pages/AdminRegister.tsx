@@ -81,7 +81,7 @@ export default function AdminRegister() {
           <Label htmlFor="empresa_telefone">Telefone da empresa</Label>
           <Input name="empresa_telefone" type="text" value={form.empresa_telefone} onChange={handleChange} required />
         </div>
-
+		<input type="text" id="adminToken" placeholder="Token de acesso" required />
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Cadastrando..." : "Criar conta"}
         </Button>
