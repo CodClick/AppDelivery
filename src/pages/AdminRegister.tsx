@@ -16,14 +16,32 @@ export default function AdminRegister() {
     nome: "",
     empresa_nome: "",
     empresa_telefone: "",
+	token: "",
   });
+
+const token = document.getElementById('adminToken').value;
+
+const { data, error } = await supabase
+  .from('admin_tokens')
+  .select('*')
+  .eq('token', token)
+  .eq('used', false)
+  .single();
+
+if (error || !data) {
+  alert('Token inválido ou já utilizado.');
+  return;
+}
+
+// prosseguir com o cadastro...
+
 
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -81,7 +99,9 @@ export default function AdminRegister() {
           <Label htmlFor="empresa_telefone">Telefone da empresa</Label>
           <Input name="empresa_telefone" type="text" value={form.empresa_telefone} onChange={handleChange} required />
         </div>
-		<input type="text" id="adminToken" placeholder="Token de acesso" required />
+		<input type="text" placeholder="Token de convite" value={form.token}
+		onChange={(e) => setForm({ ...form, token: e.target.value })}
+		/>
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Cadastrando..." : "Criar conta"}
         </Button>
