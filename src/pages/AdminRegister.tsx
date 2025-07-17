@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { signUpAdmin } from "@/services/authService";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminRegister() {
   const { toast } = useToast();
@@ -16,40 +17,31 @@ export default function AdminRegister() {
     nome: "",
     empresa_nome: "",
     empresa_telefone: "",
-	token: "",
+    token: "",
   });
-
-const token = document.getElementById('adminToken').value;
-
-const { data, error } = await supabase
-  .from('admin_tokens')
-  .select('*')
-  .eq('token', token)
-  .eq('used', false)
-  .single();
-
-if (error || !data) {
-  alert('Token inválido ou já utilizado.');
-  return;
-}
-
-// prosseguir com o cadastro...
-
 
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!form.empresa_telefone.trim()) {
+    // Validar token antes de prosseguir
+    const { data: tokenData, error: tokenError } = await supabase
+      .from("admin_tokens")
+      .select("*")
+      .eq("token", form.token)
+      .eq("used", false)
+      .single();
+
+    if (tokenError || !tokenData) {
       toast({
-        title: "Telefone obrigatório",
-        description: "Informe o telefone da empresa.",
+        title: "Token inválido",
+        description: "O token fornecido é inválido ou já foi utilizado.",
         variant: "destructive",
       });
       setLoading(false);
@@ -58,6 +50,13 @@ if (error || !data) {
 
     try {
       await signUpAdmin(form);
+
+      // Marcar token como usado
+      await supabase
+        .from("admin_tokens")
+        .update({ used: true })
+        .eq("id", tokenData.id);
+
       navigate("/admin-dashboard");
     } catch (error: any) {
       toast({
@@ -72,48 +71,80 @@ if (error || !data) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted px-4">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md space-y-4">
-        <h2 className="text-2xl font-bold text-center text-brand">Cadastro do Restaurante</h2>
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md space-y-4"
+      >
+        <h2 className="text-2xl font-bold text-center text-brand">
+          Cadastro do Restaurante
+        </h2>
 
         <div>
           <Label htmlFor="email">E-mail</Label>
-          <Input name="email" type="email" value={form.email} onChange={handleChange} required />
+          <Input
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div>
           <Label htmlFor="password">Senha</Label>
-          <Input name="password" type="password" value={form.password} onChange={handleChange} required />
+          <Input
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div>
           <Label htmlFor="nome">Seu nome</Label>
-          <Input name="nome" type="text" value={form.nome} onChange={handleChange} required />
+          <Input
+            name="nome"
+            type="text"
+            value={form.nome}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div>
           <Label htmlFor="empresa_nome">Nome da empresa</Label>
-          <Input name="empresa_nome" type="text" value={form.empresa_nome} onChange={handleChange} required />
+          <Input
+            name="empresa_nome"
+            type="text"
+            value={form.empresa_nome}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div>
           <Label htmlFor="empresa_telefone">Telefone da empresa</Label>
-          <Input name="empresa_telefone" type="text" value={form.empresa_telefone} onChange={handleChange} required />
+          <Input
+            name="empresa_telefone"
+            type="text"
+            value={form.empresa_telefone}
+            onChange={handleChange}
+            required
+          />
         </div>
-		<div className="mb-4">
-  <label htmlFor="access_token" className="block text-sm font-medium text-white">
-    Token de Acesso
-  </label>
-  <input
-    type="text"
-    id="access_token"
-    name="access_token"
-    value={form.access_token}
-    onChange={handleChange}
-    required
-    className="mt-1 p-2 block w-full rounded-md bg-zinc-800 text-white border border-zinc-700"
-    placeholder="Insira seu token de acesso"
-  />
-</div>
+
+        <div>
+          <Label htmlFor="token">Token de Acesso</Label>
+          <Input
+            name="token"
+            type="text"
+            value={form.token}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Cadastrando..." : "Criar conta"}
         </Button>
