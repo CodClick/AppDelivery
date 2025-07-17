@@ -99,9 +99,21 @@ if (error || !data) {
           <Label htmlFor="empresa_telefone">Telefone da empresa</Label>
           <Input name="empresa_telefone" type="text" value={form.empresa_telefone} onChange={handleChange} required />
         </div>
-		<input type="text" placeholder="Token de convite" value={form.token}
-		onChange={(e) => setForm({ ...form, token: e.target.value })}
-		/>
+		<div className="mb-4">
+  <label htmlFor="access_token" className="block text-sm font-medium text-white">
+    Token de Acesso
+  </label>
+  <input
+    type="text"
+    id="access_token"
+    name="access_token"
+    value={form.access_token}
+    onChange={handleChange}
+    required
+    className="mt-1 p-2 block w-full rounded-md bg-zinc-800 text-white border border-zinc-700"
+    placeholder="Insira seu token de acesso"
+  />
+</div>
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Cadastrando..." : "Criar conta"}
         </Button>
