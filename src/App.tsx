@@ -130,7 +130,16 @@ const App = () => (
                   </PrivateRoute>
                 }
               />
-
+              <Route
+                path="/:slug"
+                element={
+                <EmpresaProvider>
+                <AppLayout>
+                <Index />
+                </AppLayout>
+                </EmpresaProvider>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <ShoppingCart />
