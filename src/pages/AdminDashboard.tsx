@@ -18,7 +18,7 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
-import { useEmpresas } from "@/hooks/useEmpresas"; // Corrigido o nome do hook
+import { useEmpresa } from "@/hooks/useEmpresa";
 
 const AdminDashboard = () => {
   useProtectPage("admin"); // Não precisa guardar em variável se não usa
