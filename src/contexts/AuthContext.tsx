@@ -1,13 +1,24 @@
-import React, { createContext } from "react";
+import React, { createContext, useEffect, useState } from "react";
 import { useAuthState } from "@/hooks/useAuthState";
-import { signUp as authSignUp, signIn as authSignIn, logOut as authLogOut } from "@/services/authService";
+import {
+  signUp as authSignUp,
+  signIn as authSignIn,
+  logOut as authLogOut,
+} from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@supabase/supabase-js"; // 👈 substitui o User do firebase
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 
 interface AuthContextType {
   currentUser: User | null;
+  userRole: string | null;
   loading: boolean;
-  signUp: (email: string, password: string, name?: string, phone?: string) => Promise<any>; // 👈 não é mais UserCredential
+  signUp: (
+    email: string,
+    password: string,
+    name?: string,
+    phone?: string
+  ) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   logOut: () => Promise<void>;
 }
@@ -16,7 +27,31 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, loading } = useAuthState();
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (currentUser) {
+        const { data, error } = await supabase
+          .from("usuarios")
+          .select("role")
+          .eq("id", currentUser.id)
+          .single();
+
+        if (data?.role) {
+          setUserRole(data.role);
+        } else {
+          console.warn("Role não encontrada para o usuário atual.", error);
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
+    };
+
+    fetchUserRole();
+  }, [currentUser]);
 
   const signUp = async (email: string, password: string, name?: string, phone?: string) => {
     try {
@@ -73,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     currentUser,
+    userRole,
     loading,
     signUp,
     signIn,
