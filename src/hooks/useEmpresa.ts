@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from '@/services/supabaseService';
+import { supabase } from "@/services/supabaseService";
 import { useAuth } from "@/hooks/useAuth";
-// src/services/supabaseService.ts
-import { supabase } from '@/integrations/supabase/client';
-export { supabase };
+
 interface Empresa {
   id: string;
   nome: string;
-  // Adicione outros campos conforme necessário
+  // outros campos se necessário
 }
 
 export function useEmpresa() {
@@ -25,18 +23,33 @@ export function useEmpresa() {
 
     const fetchEmpresa = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("empresas")
-        .select("*")
-        .eq("admin_id", user.id)
+
+      // 1️⃣ Busca o usuário para pegar o empresa_id
+      const { data: usuarioData, error: usuarioError } = await supabase
+        .from("usuarios")
+        .select("empresa_id")
+        .eq("id", user.id)
         .single();
 
-      if (error) {
-        console.error("Erro ao buscar empresa:", error.message);
-        setErro(error.message);
+      if (usuarioError || !usuarioData?.empresa_id) {
+        setErro("Usuário não possui empresa vinculada");
+        setEmpresa(null);
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Agora busca a empresa com base no empresa_id
+      const { data: empresaData, error: empresaError } = await supabase
+        .from("empresas")
+        .select("*")
+        .eq("id", usuarioData.empresa_id)
+        .single();
+
+      if (empresaError) {
+        setErro("Erro ao buscar empresa");
         setEmpresa(null);
       } else {
-        setEmpresa(data);
+        setEmpresa(empresaData);
       }
 
       setLoading(false);
