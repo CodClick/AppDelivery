@@ -18,7 +18,12 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
+import { useAuthState } from "@/hooks/useAuthState";
 import { useEmpresa } from "@/hooks/useEmpresa";
+
+const { user } = useAuthState();
+const { empresa } = useEmpresa(user?.id ?? null);
+
 
 const AdminDashboard = () => {
   useProtectPage("admin"); // Não precisa guardar em variável se não usa
