@@ -8,9 +8,10 @@ import { protectPageByRole } from "@/utils/protectAccess";
 
 import { useProtectPage } from "@/hooks/useProtectPage";
 
-const AdminDashboard = () => {
+  const AdminDashboard = () => {
   const loading = useProtectPage("admin");
-
+  const navigate = useNavigate();
+  const { logOut } = useAuth();
   if (loading) return <p>Carregando...</p>;
 
   return (
