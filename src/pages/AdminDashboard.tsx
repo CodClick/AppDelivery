@@ -1,18 +1,9 @@
 import { useEffect } from 'react';
-import { protectPageByRole } from '@/utils/protectAccess'; // ajuste o caminho conforme seu projeto
+import { protectPageByRole } from '@/utils/protectAccess';
 
-export default function AdminDashboard() {
-  useEffect(() => {
-    protectPageByRole('admin-dashboard');
-  }, []);
-
-  return (
-    <div>
-      <h1>Painel Administrativo</h1>
-      {/* conteúdo da página */}
-    </div>
-  );
-}
+useEffect(() => {
+  protectPageByRole('admin');
+}, []);
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
