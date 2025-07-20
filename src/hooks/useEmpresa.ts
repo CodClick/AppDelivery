@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from '@/services/supabaseService';
-export { supabase };
 import { useAuth } from "@/hooks/useAuth";
-
+// src/services/supabaseService.ts
+import { supabase } from '@/integrations/supabase/client';
+export { supabase };
 interface Empresa {
   id: string;
   nome: string;
