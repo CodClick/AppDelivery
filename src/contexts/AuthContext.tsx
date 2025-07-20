@@ -1,3 +1,4 @@
+import { useContext } from "react";
 import React, { createContext, useEffect, useState } from "react";
 import { useAuthState } from "@/hooks/useAuthState";
 import {
@@ -52,8 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     fetchUserRole();
   }, [currentUser]);
-
-import { useContext } from "react";
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
