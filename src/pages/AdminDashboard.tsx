@@ -25,9 +25,14 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { logOut } = useAuth();
 
-  const { empresa, loading: loadingEmpresa } = useEmpresa();
+export default function AdminDashboard() {
+  const { empresa } = useEmpresas();
 
-  if (loadingPage || loadingEmpresa) return <p>Carregando...</p>;
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-brand">
+        Bem-vindo, {empresa?.nome || "carregando..."}
+      </h1>
 
   return (
     <div className="container mx-auto px-4 py-8">
