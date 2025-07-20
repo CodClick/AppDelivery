@@ -21,16 +21,13 @@ import { useProtectPage } from "@/hooks/useProtectPage";
 import { useAuthState } from "@/hooks/useAuthState";
 import { useEmpresa } from "@/hooks/useEmpresa";
 
-const { user } = useAuthState();
-const { empresa } = useEmpresa(user?.id ?? null);
-
-
 const AdminDashboard = () => {
-  useProtectPage("admin"); // Não precisa guardar em variável se não usa
+  useProtectPage("admin");
 
   const navigate = useNavigate();
   const { logOut } = useAuth();
-  const { empresa } = useEmpresa();
+  const { user } = useAuthState();
+  const { empresa } = useEmpresa(user?.id ?? null); // <- agora está dentro do componente!
 
   return (
     <div className="container mx-auto px-4 py-8">
