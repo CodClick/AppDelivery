@@ -3,7 +3,7 @@ import { protectPageByRole } from '@/utils/protectAccess'; // ajuste o caminho c
 
 export default function AdminDashboard() {
   useEffect(() => {
-    protectPageByRole('admin');
+    protectPageByRole('admin-dashboard');
   }, []);
 
   return (
