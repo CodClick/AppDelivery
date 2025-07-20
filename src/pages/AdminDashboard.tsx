@@ -1,29 +1,72 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator } from "lucide-react";
-import { protectPageByRole } from "@/utils/protectAccess";
-
+import {
+  ClipboardList,
+  Settings,
+  LogOut,
+  ArrowLeft,
+  Calculator,
+} from "lucide-react";
 import { useProtectPage } from "@/hooks/useProtectPage";
+import { supabase } from "@/services/supabaseClient"; // Ajuste o path se necessário
 
-  const AdminDashboard = () => {
+const AdminDashboard = () => {
   const loading = useProtectPage("admin");
   const navigate = useNavigate();
-  const { logOut } = useAuth();
+  const { user, logOut } = useAuth();
+  const [empresaNome, setEmpresaNome] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchEmpresa = async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("nome")
+        .eq("admin_id", user.id)
+        .single();
+
+      if (data) setEmpresaNome(data.nome);
+      if (error) console.error("Erro ao buscar empresa:", error.message);
+    };
+
+    fetchEmpresa();
+  }, [user]);
+
   if (loading) return <p>Carregando...</p>;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Painel de Administração</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Painel de Administração</h1>
+          {empresaNome && (
+            <p className="text-gray-600 text-lg mt-1">{empresaNome}</p>
+          )}
+        </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate("/")} variant="outline" className="flex items-center gap-2">
+          <Button
+            onClick={() => navigate("/")}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
             <ArrowLeft size={16} />
             Voltar ao Cardápio
           </Button>
-          <Button onClick={logOut} variant="outline" className="flex items-center gap-2">
+          <Button
+            onClick={logOut}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
             <LogOut size={16} />
             Sair
           </Button>
@@ -86,8 +129,9 @@ import { useProtectPage } from "@/hooks/useProtectPage";
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Bem-vindo, Administrador!</h2>
         <p className="text-gray-600">
-          Use este painel para gerenciar todos os aspectos do seu restaurante. 
-          Você pode visualizar e atualizar pedidos, gerenciar o cardápio completo e acessar o sistema de PDV.
+          Use este painel para gerenciar todos os aspectos do seu restaurante.
+          Você pode visualizar e atualizar pedidos, gerenciar o cardápio completo
+          e acessar o sistema de PDV.
         </p>
       </div>
     </div>
