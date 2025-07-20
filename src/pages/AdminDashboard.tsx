@@ -1,17 +1,16 @@
-import { useEffect } from 'react';
-import { protectPageByRole } from '@/utils/protectAccess';
-
-useEffect(() => {
-  protectPageByRole('admin');
-}, []);
-import React from "react";
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator } from "lucide-react";
+import { protectPageByRole } from '@/utils/protectAccess';
 
 const AdminDashboard = () => {
+  useEffect(() => {
+    protectPageByRole('admin');
+  }, []);
+
   const { currentUser, logOut } = useAuth();
   const navigate = useNavigate();
 
