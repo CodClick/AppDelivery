@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
 import {
   ClipboardList,
   Settings,
@@ -16,41 +15,27 @@ import {
   ArrowLeft,
   Calculator,
 } from "lucide-react";
+
+import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
-import { supabase } from "@/services/supabaseClient"; // Ajuste o path se necessário
+import { useEmpresa } from "@/hooks/useEmpresa";
 
 const AdminDashboard = () => {
-  const loading = useProtectPage("admin");
+  const loadingPage = useProtectPage("admin");
   const navigate = useNavigate();
-  const { user, logOut } = useAuth();
-  const [empresaNome, setEmpresaNome] = useState("");
+  const { logOut } = useAuth();
 
-  useEffect(() => {
-    if (!user) return;
+  const { empresa, loading: loadingEmpresa } = useEmpresa();
 
-    const fetchEmpresa = async () => {
-      const { data, error } = await supabase
-        .from("empresas")
-        .select("nome")
-        .eq("admin_id", user.id)
-        .single();
-
-      if (data) setEmpresaNome(data.nome);
-      if (error) console.error("Erro ao buscar empresa:", error.message);
-    };
-
-    fetchEmpresa();
-  }, [user]);
-
-  if (loading) return <p>Carregando...</p>;
+  if (loadingPage || loadingEmpresa) return <p>Carregando...</p>;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Painel de Administração</h1>
-          {empresaNome && (
-            <p className="text-gray-600 text-lg mt-1">{empresaNome}</p>
+          {empresa?.nome && (
+            <p className="text-gray-600 text-lg mt-1">{empresa.nome}</p>
           )}
         </div>
         <div className="flex gap-2">
