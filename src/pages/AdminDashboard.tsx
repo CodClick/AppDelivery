@@ -25,7 +25,7 @@ const AdminDashboard = () => {
 
   const navigate = useNavigate();
   const { logOut } = useAuth();
-  const { empresa } = useEmpresas();
+  const { empresa } = useEmpresa();
 
   return (
     <div className="container mx-auto px-4 py-8">
