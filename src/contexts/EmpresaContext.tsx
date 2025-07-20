@@ -19,23 +19,27 @@ export const EmpresaProvider = ({ children }: { children: React.ReactNode }) => 
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
 
   useEffect(() => {
-    const fetchEmpresa = async () => {
-      if (!slug) return;
+   const fetchEmpresa = async () => {
+  if (!slug) return;
 
-      const { data, error } = await supabase
-        .from("empresas")
-        .select("*")
-        .eq("slug", slug)
-        .single();
+  console.log("Slug detectado:", slug);
 
-      if (error) {
-        console.error("Erro ao buscar empresa pelo slug:", error);
-        setEmpresa(null);
-        return;
-      }
+  const { data, error } = await supabase
+    .from("empresas")
+    .select("*")
+    .eq("slug", slug)
+    .single();
 
-      setEmpresa(data);
-    };
+  if (error) {
+    console.error("Erro ao buscar empresa pelo slug:", error);
+    setEmpresa(null);
+    return;
+  }
+
+  console.log("Empresa carregada com sucesso:", data);
+  setEmpresa(data);
+};
+
 
     fetchEmpresa();
   }, [slug]);
