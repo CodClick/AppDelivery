@@ -18,21 +18,14 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
-import { useEmpresa } from "@/hooks/useEmpresa";
+import { useEmpresas } from "@/hooks/useEmpresas"; // Corrigido o nome do hook
 
 const AdminDashboard = () => {
-  const loadingPage = useProtectPage("admin");
+  useProtectPage("admin"); // Não precisa guardar em variável se não usa
+
   const navigate = useNavigate();
   const { logOut } = useAuth();
-
-export default function AdminDashboard() {
   const { empresa } = useEmpresas();
-
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-brand">
-        Bem-vindo, {empresa?.nome || "carregando..."}
-      </h1>
 
   return (
     <div className="container mx-auto px-4 py-8">
