@@ -6,24 +6,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator } from "lucide-react";
 import { protectPageByRole } from "@/utils/protectAccess";
 
+import { useProtectPage } from "@/hooks/useProtectPage";
+
 const AdminDashboard = () => {
-  const { currentUser, logOut } = useAuth();
-  const navigate = useNavigate();
-  const [checkingRole, setCheckingRole] = useState(true);
+  const loading = useProtectPage("admin");
 
-  useEffect(() => {
-    const verifyAccess = async () => {
-      if (currentUser) {
-        await protectPageByRole("admin");
-        setCheckingRole(false);
-      }
-    };
-    verifyAccess();
-  }, [currentUser]);
-
-  if (!currentUser || checkingRole) {
-    return <div className="p-4">Carregando...</div>; // Pode trocar por spinner se quiser
-  }
+  if (loading) return <p>Carregando...</p>;
 
   return (
     <div className="container mx-auto px-4 py-8">
