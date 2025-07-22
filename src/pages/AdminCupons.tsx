@@ -1,110 +1,132 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuthState } from "@/hooks/useAuthState";
 import { useEmpresa } from "@/hooks/useEmpresa";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { format } from "date-fns";
 
-interface Cupom {
-  id: string;
-  codigo: string;
-  tipo: "fixo" | "porcentagem";
-  valor: number;
-  ativo: boolean;
-  data_expiracao: string;
-}
+const supabase = createClient(
+  "https://gjwmswafmuyhobwhuwup.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqd21zd2FmbXV5aG9id2h1d3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxOTgwODksImV4cCI6MjA2NTc3NDA4OX0.GGssWKxMhTggo0yGQpVArjulEiI9FSWUNitxqfCQjTw"
+);
 
-const AdminCoupons = () => {
+export default function AdminCupons() {
   const { user } = useAuthState();
   const { empresa } = useEmpresa(user?.id ?? null);
 
-  const [cupons, setCupons] = useState<Cupom[]>([]);
+  const [cupons, setCupons] = useState<any[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [novoCupom, setNovoCupom] = useState({
+    codigo: "",
+    desconto: "",
+    validade: "",
+  });
 
-  // Busca os cupons da empresa logada
-  const fetchCupons = async () => {
+  async function carregarCupons() {
     if (!empresa?.id) return;
 
     const { data, error } = await supabase
       .from("cupons")
       .select("*")
       .eq("empresa_id", empresa.id)
-      .order("data_expiracao", { ascending: false });
+      .order("validade", { ascending: false });
 
-    if (error) {
-      console.error("Erro ao buscar cupons:", error);
-    } else {
-      setCupons(data);
-    }
-  };
+    if (!error) setCupons(data);
+  }
 
-  // Cria um cupom fixo de exemplo
-  const handleCreateCoupon = async () => {
-    if (!empresa?.id) {
-      console.error("Empresa não encontrada.");
-      return;
-    }
+  async function criarCupom() {
+    if (!empresa?.id) return;
+
+    const { codigo, desconto, validade } = novoCupom;
 
     const { error } = await supabase.from("cupons").insert([
       {
-        codigo: "BEMVINDO10",
-        tipo: "porcentagem",
-        valor: 10,
-        ativo: true,
-        data_expiracao: "2025-12-31",
+        codigo,
+        desconto: parseFloat(desconto),
+        validade,
         empresa_id: empresa.id,
       },
     ]);
 
-    if (error) {
-      console.error("Erro ao criar cupom:", error);
+    if (!error) {
+      setShowModal(false);
+      setNovoCupom({ codigo: "", desconto: "", validade: "" });
+      carregarCupons();
     } else {
-      fetchCupons();
+      alert("Erro ao criar cupom");
     }
-  };
+  }
 
   useEffect(() => {
-    if (empresa?.id) {
-      fetchCupons();
-    }
-  }, [empresa?.id]);
+    carregarCupons();
+  }, [empresa]);
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Cupons de Desconto</h1>
-        <Button onClick={handleCreateCoupon}>Criar Cupom</Button>
+        <h1 className="text-2xl font-bold text-brand">Cupons de Desconto</h1>
+        <Button onClick={() => setShowModal(true)}>Criar Cupom</Button>
       </div>
 
-      {cupons.length === 0 ? (
-        <p className="text-muted-foreground">Nenhum cupom cadastrado.</p>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cupons.map((cupom) => (
-            <Card key={cupom.id}>
-              <CardHeader>
-                <CardTitle>{cupom.codigo}</CardTitle>
-                <CardDescription>
-                  {cupom.tipo === "porcentagem"
-                    ? `${cupom.valor}% de desconto`
-                    : `R$ ${cupom.valor.toFixed(2)} de desconto`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>Expira em: {new Date(cupom.data_expiracao).toLocaleDateString()}</p>
-                <p>Status: {cupom.ativo ? "Ativo" : "Inativo"}</p>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="grid gap-4">
+        {cupons.map((cupom) => (
+          <div
+            key={cupom.id}
+            className="border p-4 rounded-lg flex justify-between items-center"
+          >
+            <div>
+              <p className="font-semibold text-lg">{cupom.codigo}</p>
+              <p className="text-sm text-gray-500">
+                {cupom.desconto}% – válido até{" "}
+                {format(new Date(cupom.validade), "dd/MM/yyyy")}
+              </p>
+            </div>
+            <span className="text-sm text-gray-400">
+              ID: {cupom.id.slice(0, 8)}...
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Novo Cupom</h2>
+            <Input
+              placeholder="Código do cupom"
+              value={novoCupom.codigo}
+              onChange={(e) =>
+                setNovoCupom({ ...novoCupom, codigo: e.target.value })
+              }
+              className="mb-2"
+            />
+            <Input
+              placeholder="Desconto (%)"
+              type="number"
+              value={novoCupom.desconto}
+              onChange={(e) =>
+                setNovoCupom({ ...novoCupom, desconto: e.target.value })
+              }
+              className="mb-2"
+            />
+            <Input
+              type="date"
+              value={novoCupom.validade}
+              onChange={(e) =>
+                setNovoCupom({ ...novoCupom, validade: e.target.value })
+              }
+              className="mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowModal(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={criarCupom}>Salvar</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
-};
-
-export default AdminCoupons;
+}
