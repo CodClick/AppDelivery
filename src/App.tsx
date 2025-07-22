@@ -23,6 +23,7 @@ import ShoppingCart from "./components/ShoppingCart";
 import Checkout from "./pages/Checkout";
 import AppLayout from "@/components/layouts/AppLayout"; // importa o layout
 import AdminRegister from "./pages/AdminRegister";
+import AdminCupons from "@/pages/AdminCupons";
 
 
 const queryClient = new QueryClient();
@@ -61,6 +62,15 @@ const App = () => (
                 }
               />
               {/* Todas essas rotas abaixo agora usam AppLayout + PrivateRoute */}
+
+            <Route
+              path="/admin-coupons"
+              element={
+               <PrivateRoute role="admin">
+                <AdminCupons />
+               </PrivateRoute>
+              }
+            />
               <Route
                 path="/admin-dashboard"
                 element={
