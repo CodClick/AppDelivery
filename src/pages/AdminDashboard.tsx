@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator, Percent } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -110,6 +111,22 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+  <CardHeader className="text-center">
+    <div className="mx-auto mb-4 p-3 bg-yellow-100 rounded-full w-fit">
+      <Percent className="h-8 w-8 text-yellow-600" />
+    </div>
+    <CardTitle className="text-xl">Cupons de Desconto</CardTitle>
+    <CardDescription>
+      Crie e gerencie cupons promocionais para seus clientes
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    <Button asChild className="w-full">
+      <Link to="/admin-coupons">Gerenciar Cupons</Link>
+    </Button>
+  </CardContent>
+</Card>
 
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Bem-vindo, Administrador!</h2>
