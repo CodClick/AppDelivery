@@ -110,8 +110,7 @@ const AdminDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+		<Card className="hover:shadow-lg transition-shadow cursor-pointer">
   <CardHeader className="text-center">
     <div className="mx-auto mb-4 p-3 bg-yellow-100 rounded-full w-fit">
       <Percent className="h-8 w-8 text-yellow-600" />
@@ -127,6 +126,8 @@ const AdminDashboard = () => {
     </Button>
   </CardContent>
 </Card>
+      </div>
+      
 
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Bem-vindo, Administrador!</h2>
