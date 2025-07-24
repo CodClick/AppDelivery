@@ -1,191 +1,213 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 
-  export default function AdminCupons() {
+export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    nome: "",
+    id: null,
+    codigo: "",
     tipo: "percentual",
     valor: "",
     validade: "",
   });
 
-  const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const empresa_id = localStorage.getItem("empresa_id");
 
-  // 🔐 Buscar o ID da empresa do admin logado
   useEffect(() => {
-    const fetchEmpresaId = async () => {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+    if (empresa_id) {
+      fetchCupons();
+    }
+  }, [empresa_id]);
 
-      if (authError || !user) return;
-
-      const { data, error } = await supabase
-        .from("usuarios")
-        .select("empresa_id")
-        .eq("id", user.id)
-        .single();
-
-      if (error || !data) {
-        console.error("Erro ao buscar empresa_id:", error);
-        return;
-      }
-
-      setEmpresaId(data.empresa_id);
-    };
-
-    fetchEmpresaId();
-  }, []);
-
-  const fetchCupons = async () => {
+  async function fetchCupons() {
     const { data, error } = await supabase
       .from("cupons")
       .select("*")
-      .eq("empresa_id", empresaId);
+      .eq("empresa_id", empresa_id)
+      .order("validade", { ascending: false });
 
     if (error) {
-      console.error("Erro ao buscar cupons:", error.message);
+      console.error("Erro ao buscar cupons:", error);
     } else {
       setCupons(data || []);
     }
-  };
+  }
 
-  useEffect(() => {
-    if (empresaId) fetchCupons();
-  }, [empresaId]);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    const payload = {
+      nome: formData.codigo,
+      tipo: formData.tipo,
+      valor: parseFloat(formData.valor),
+      validade: formData.validade,
+      empresa_id,
+    };
 
-  const handleSubmit = async () => {
-    const { nome, tipo, valor, validade } = formData;
+    if (editMode && formData.id) {
+      const { error } = await supabase
+        .from("cupons")
+        .update(payload)
+        .eq("id", formData.id);
 
-    if (!nome || !valor || !validade || !empresaId) {
-      toast.error("Preencha todos os campos!");
-      return;
+      if (error) {
+        console.error("Erro ao atualizar cupom:", error);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("cupons").insert(payload);
+      if (error) {
+        console.error("Erro ao criar cupom:", error);
+        return;
+      }
     }
 
-    const valorNumber = parseFloat(valor.replace(",", "."));
+    setFormData({
+      id: null,
+      codigo: "",
+      tipo: "percentual",
+      valor: "",
+      validade: "",
+    });
+    setOpen(false);
+    setEditMode(false);
+    fetchCupons();
+  }
 
-    const { error } = await supabase.from("cupons").insert([
-      {
-        nome,
-        tipo,
-        valor: valorNumber,
-        validade,
-        empresa_id: empresaId,
-      },
-    ]);
+  function handleEdit(cupom: any) {
+    setFormData({
+      id: cupom.id,
+      codigo: cupom.nome,
+      tipo: cupom.tipo,
+      valor: cupom.valor.toString(),
+      validade: cupom.validade?.split("T")[0] || "",
+    });
+    setEditMode(true);
+    setOpen(true);
+  }
 
+  async function handleDelete(id: string) {
+    if (!confirm("Tem certeza que deseja excluir este cupom?")) return;
+
+    const { error } = await supabase.from("cupons").delete().eq("id", id);
     if (error) {
-      console.error("Erro ao criar cupom:", error.message);
-      toast.error("Erro ao criar cupom!");
+      console.error("Erro ao excluir cupom:", error);
     } else {
-      toast.success("Cupom criado com sucesso!");
-      setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" });
-      setOpen(false);
       fetchCupons();
     }
-  };
+  }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Cupons de Desconto</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="default">Criar Cupom</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Novo Cupom</DialogTitle>
-              <DialogDescription>
-                Preencha os dados para criar um novo cupom.
-              </DialogDescription>
-            </DialogHeader>
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Cupons de Desconto</h2>
 
-            <div className="space-y-4">
-              <div>
-                <Label>Código do Cupom</Label>
-                <Input
-                  name="nome"
-                  value={formData.nome}
-                  onChange={handleChange}
-                  placeholder="EX: BEMVINDO10"
-                />
-              </div>
+      <Button className="mb-4" onClick={() => { setOpen(true); setEditMode(false); }}>
+        Criar Cupom
+      </Button>
 
-              <div>
-                <Label>Tipo de Desconto</Label>
-                <select
-                  name="tipo"
-                  value={formData.tipo}
-                  onChange={handleChange}
-                  className="w-full border rounded-md p-2"
+      <table className="w-full text-left border border-zinc-700">
+        <thead>
+          <tr className="bg-zinc-800 text-white">
+            <th className="p-2">Código</th>
+            <th className="p-2">Tipo</th>
+            <th className="p-2">Valor</th>
+            <th className="p-2">Validade</th>
+            <th className="p-2">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cupons.map((cupom) => (
+            <tr key={cupom.id} className="border-t border-zinc-700 hover:bg-zinc-900">
+              <td className="p-2">{cupom.nome}</td>
+              <td className="p-2">{cupom.tipo}</td>
+              <td className="p-2">
+                {cupom.tipo === "percentual"
+                  ? `${cupom.valor}%`
+                  : `R$ ${cupom.valor.toFixed(2).replace(".", ",")}`}
+              </td>
+              <td className="p-2">
+                {new Date(cupom.validade).toLocaleDateString("pt-BR")}
+              </td>
+              <td className="p-2 flex gap-2">
+                <Button variant="outline" onClick={() => handleEdit(cupom)}>Editar</Button>
+                <Button variant="destructive" onClick={() => handleDelete(cupom.id)}>Excluir</Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-zinc-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">
+              {editMode ? "Editar Cupom" : "Novo Cupom"}
+            </h3>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                placeholder="Código do cupom"
+                value={formData.codigo}
+                onChange={(e) =>
+                  setFormData({ ...formData, codigo: e.target.value })
+                }
+              />
+
+              <select
+                className="w-full p-2 bg-zinc-800 text-white rounded"
+                value={formData.tipo}
+                onChange={(e) =>
+                  setFormData({ ...formData, tipo: e.target.value })
+                }
+              >
+                <option value="percentual">Percentual (%)</option>
+                <option value="valor_fixo">Valor Fixo (R$)</option>
+              </select>
+
+              <Input
+                type="number"
+                placeholder="Valor"
+                value={formData.valor}
+                onChange={(e) =>
+                  setFormData({ ...formData, valor: e.target.value })
+                }
+              />
+
+              <Input
+                type="date"
+                value={formData.validade}
+                onChange={(e) =>
+                  setFormData({ ...formData, validade: e.target.value })
+                }
+              />
+
+              <div className="flex justify-between mt-4">
+                <Button type="submit">{editMode ? "Salvar" : "Criar"}</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setOpen(false);
+                    setEditMode(false);
+                    setFormData({
+                      id: null,
+                      codigo: "",
+                      tipo: "percentual",
+                      valor: "",
+                      validade: "",
+                    });
+                  }}
                 >
-                  <option value="percentual">Porcentagem (%)</option>
-                  <option value="fixo">Valor Fixo (R$)</option>
-                </select>
+                  Cancelar
+                </Button>
               </div>
-
-              <div>
-                <Label>Valor</Label>
-                <Input
-                  name="valor"
-                  value={formData.valor}
-                  onChange={handleChange}
-                  placeholder={formData.tipo === "percentual" ? "Ex: 10 (%)" : "Ex: 5.00 (R$)"}
-                />
-              </div>
-
-              <div>
-                <Label>Validade</Label>
-                <Input
-                  type="date"
-                  name="validade"
-                  value={formData.validade}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <Button onClick={handleSubmit} className="w-full">
-                Salvar Cupom
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {cupons.map((cupom) => (
-          <div key={cupom.id} className="p-4 border rounded-lg shadow">
-            <h2 className="font-semibold">{cupom.nome}</h2>
-            <p>
-              {cupom.tipo === "percentual"
-                ? `Desconto: ${cupom.valor}%`
-                : `Desconto: ${cupom.valor.toFixed(2)}`}
-            </p>
-            <p>Válido até: {new Date(cupom.validade).toLocaleDateString()}</p>
+            </form>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-
