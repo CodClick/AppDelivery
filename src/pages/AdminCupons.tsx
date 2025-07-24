@@ -140,7 +140,7 @@ import { toast } from "sonner";
                   className="w-full border rounded-md p-2"
                 >
                   <option value="percentual">Porcentagem (%)</option>
-                  <option value="valor_fixo">Valor Fixo (R$)</option>
+                  <option value="fixo">Valor Fixo (R$)</option>
                 </select>
               </div>
 
