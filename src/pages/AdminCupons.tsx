@@ -188,3 +188,4 @@ export default function AdminCupons() {
     </div>
   );
 }
+export default AdminCoupons;
