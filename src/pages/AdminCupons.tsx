@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   Dialog,
@@ -176,11 +176,11 @@ import { toast } from "sonner";
         {cupons.map((cupom) => (
           <div key={cupom.id} className="p-4 border rounded-lg shadow">
             <h2 className="font-semibold">{cupom.nome}</h2>
-            <p>
-              {cupom.tipo === "percentual"}
-                ? Desconto: ${cupom.valor}%
-                : Desconto: ${cupom.valor.toFixed(2)}}
-            </p>
+			<p>
+			{cupom.tipo === "percentual"
+			? `${cupom.valor}%`
+			: `R$ ${cupom.valor.toFixed(2)}`}
+			</p>
             <p>Válido até: {new Date(cupom.validade).toLocaleDateString()}</p>
           </div>
         ))}
