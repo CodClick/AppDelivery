@@ -13,11 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-  export default function AdminCupons() {
+  function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
-    codigo: "",
+    nome: "",
     tipo: "percentual",
     valor: "",
     validade: "",
@@ -74,9 +74,9 @@ import { toast } from "sonner";
   };
 
   const handleSubmit = async () => {
-    const { codigo, tipo, valor, validade } = formData;
+    const { nome, tipo, valor, validade } = formData;
 
-    if (!codigo || !valor || !validade || !empresaId) {
+    if (!nome || !valor || !validade || !empresaId) {
       toast.error("Preencha todos os campos!");
       return;
     }
@@ -85,7 +85,7 @@ import { toast } from "sonner";
 
     const { error } = await supabase.from("cupons").insert([
       {
-        codigo,
+        nome,
         tipo,
         valor: valorNumber,
         validade,
@@ -98,7 +98,7 @@ import { toast } from "sonner";
       toast.error("Erro ao criar cupom!");
     } else {
       toast.success("Cupom criado com sucesso!");
-      setFormData({ codigo: "", tipo: "percentual", valor: "", validade: "" });
+      setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" });
       setOpen(false);
       fetchCupons();
     }
@@ -124,8 +124,8 @@ import { toast } from "sonner";
               <div>
                 <Label>Código do Cupom</Label>
                 <Input
-                  name="codigo"
-                  value={formData.codigo}
+                  name="nome"
+                  value={formData.nome}
                   onChange={handleChange}
                   placeholder="EX: BEMVINDO10"
                 />
@@ -175,7 +175,7 @@ import { toast } from "sonner";
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {cupons.map((cupom) => (
           <div key={cupom.id} className="p-4 border rounded-lg shadow">
-            <h2 className="font-semibold">{cupom.codigo}</h2>
+            <h2 className="font-semibold">{cupom.nome}</h2>
             <p>
               {cupom.tipo === "percentual"
                 ? `Desconto: ${cupom.valor}%`
@@ -188,3 +188,4 @@ import { toast } from "sonner";
     </div>
   );
 }
+export default AdminCoupons;
