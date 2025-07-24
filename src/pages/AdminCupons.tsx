@@ -179,7 +179,7 @@ import { toast } from "sonner";
             <p>
               {cupom.tipo === "percentual"
                 ? Desconto: ${cupom.valor}%
-                : Desconto: R$${cupom.valor.toFixed(2)}}
+                : Desconto: ${cupom.valor.toFixed(2)}}
             </p>
             <p>Válido até: {new Date(cupom.validade).toLocaleDateString()}</p>
           </div>
