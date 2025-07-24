@@ -1,142 +1,170 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { useAuthState } from "@/hooks/useAuthState";
-import { useEmpresa } from "@/hooks/useEmpresa";
-import { supabase } from "@/lib/supabaseClient";
-
-type Cupom = {
-  id: string;
-  nome: string;
-  tipo: "percentual" | "valor_fixo";
-  valor: number;
-  validade: string;
-};
+import { toast } from "sonner";
 
 export default function AdminCupons() {
-  const { user } = useAuthState();
-  const { empresa } = useEmpresa(user?.id ?? null);
-
-  const [cupons, setCupons] = useState<Cupom[]>([]);
+  const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    nome: "",
+  const [formData, setFormData] = useState({
+    codigo: "",
     tipo: "percentual",
     valor: "",
     validade: "",
   });
 
-  useEffect(() => {
-    if (empresa?.id) {
-      fetchCupons();
-    }
-  }, [empresa?.id]);
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
 
-  async function fetchCupons() {
+  // 🔐 Buscar o ID da empresa do admin logado
+  useEffect(() => {
+    const fetchEmpresaId = async () => {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) return;
+
+      const { data, error } = await supabase
+        .from("usuarios")
+        .select("empresa_id")
+        .eq("id", user.id)
+        .single();
+
+      if (error || !data) {
+        console.error("Erro ao buscar empresa_id:", error);
+        return;
+      }
+
+      setEmpresaId(data.empresa_id);
+    };
+
+    fetchEmpresaId();
+  }, []);
+
+  const fetchCupons = async () => {
     const { data, error } = await supabase
       .from("cupons")
       .select("*")
-      .eq("empresa_id", empresa?.id);
+      .eq("empresa_id", empresaId);
 
-    if (!error && data) {
-      setCupons(data);
+    if (error) {
+      console.error("Erro ao buscar cupons:", error.message);
+    } else {
+      setCupons(data || []);
     }
-  }
+  };
 
-async function criarCupom() {
-  try {
-    if (!form.nome || !form.valor || !form.validade || !empresa?.id) {
-      console.warn("Campos obrigatórios não preenchidos.");
+  useEffect(() => {
+    if (empresaId) fetchCupons();
+  }, [empresaId]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async () => {
+    const { codigo, tipo, valor, validade } = formData;
+
+    if (!codigo || !valor || !validade || !empresaId) {
+      toast.error("Preencha todos os campos!");
       return;
     }
 
-    const newCupom = {
-      nome: form.nome,
-      tipo: form.tipo,
-      valor: parseFloat(form.valor),
-      validade: form.validade,
-      empresa_id: empresa.id,
-    };
+    const valorNumber = parseFloat(valor.replace(",", "."));
 
-    const { data, error } = await supabase.from("cupons").insert(newCupom);
+    const { error } = await supabase.from("cupons").insert([
+      {
+        codigo,
+        tipo,
+        valor: valorNumber,
+        validade,
+        empresa_id: empresaId,
+      },
+    ]);
 
     if (error) {
-      console.error("Erro ao inserir cupom:", error.message, error.details);
+      console.error("Erro ao criar cupom:", error.message);
+      toast.error("Erro ao criar cupom!");
     } else {
-      console.log("Cupom criado com sucesso:", data);
-      setForm({ nome: "", tipo: "percentual", valor: "", validade: "" });
+      toast.success("Cupom criado com sucesso!");
+      setFormData({ codigo: "", tipo: "percentual", valor: "", validade: "" });
       setOpen(false);
       fetchCupons();
     }
-  } catch (err) {
-    console.error("Erro inesperado ao criar cupom:", err);
-  }
-}
-
+  };
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-brand">Cupons de Desconto</h2>
+        <h1 className="text-2xl font-bold">Cupons de Desconto</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-brand hover:bg-brand-600 text-white">Criar Cupom</Button>
+            <Button variant="default">Criar Cupom</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Novo Cupom</DialogTitle>
+              <DialogDescription>
+                Preencha os dados para criar um novo cupom.
+              </DialogDescription>
             </DialogHeader>
+
             <div className="space-y-4">
               <div>
-                <Label>Nome do cupom</Label>
+                <Label>Código do Cupom</Label>
                 <Input
-                  value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  placeholder="Ex: BEMVINDO10"
+                  name="codigo"
+                  value={formData.codigo}
+                  onChange={handleChange}
+                  placeholder="EX: BEMVINDO10"
                 />
               </div>
+
               <div>
-                <Label>Tipo de desconto</Label>
-                <Select
-                  value={form.tipo}
-                  onValueChange={(value) => setForm({ ...form, tipo: value as "percentual" | "valor_fixo" })}
+                <Label>Tipo de Desconto</Label>
+                <select
+                  name="tipo"
+                  value={formData.tipo}
+                  onChange={handleChange}
+                  className="w-full border rounded-md p-2"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentual">Porcentagem (%)</SelectItem>
-                    <SelectItem value="valor_fixo">Valor fixo (R$)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="percentual">Porcentagem (%)</option>
+                  <option value="valor_fixo">Valor Fixo (R$)</option>
+                </select>
               </div>
+
               <div>
                 <Label>Valor</Label>
                 <Input
-                  type="number"
-                  value={form.valor}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                  placeholder="Ex: 10"
+                  name="valor"
+                  value={formData.valor}
+                  onChange={handleChange}
+                  placeholder={formData.tipo === "percentual" ? "Ex: 10 (%)" : "Ex: 5.00 (R$)"}
                 />
               </div>
+
               <div>
                 <Label>Validade</Label>
                 <Input
                   type="date"
-                  value={form.validade}
-                  onChange={(e) => setForm({ ...form, validade: e.target.value })}
+                  name="validade"
+                  value={formData.validade}
+                  onChange={handleChange}
                 />
               </div>
-              <Button className="w-full bg-brand" onClick={criarCupom}>
+
+              <Button onClick={handleSubmit} className="w-full">
                 Salvar Cupom
               </Button>
             </div>
@@ -144,26 +172,20 @@ async function criarCupom() {
         </Dialog>
       </div>
 
-      {cupons.length === 0 ? (
-        <p className="text-gray-500">Nenhum cupom criado ainda.</p>
-      ) : (
-        <div className="grid gap-4">
-          {cupons.map((cupom) => (
-            <div
-              key={cupom.id}
-              className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white"
-            >
-              <h3 className="font-semibold text-lg">{cupom.nome}</h3>
-              <p className="text-sm">
-                {cupom.tipo === "percentual" ? `${cupom.valor}%` : `R$ ${cupom.valor.toFixed(2)}`} de desconto
-              </p>
-              <p className="text-xs text-gray-500">
-                Válido até: {new Date(cupom.validade).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {cupons.map((cupom) => (
+          <div key={cupom.id} className="p-4 border rounded-lg shadow">
+            <h2 className="font-semibold">{cupom.codigo}</h2>
+            <p>
+              {cupom.tipo === "percentual"
+                ? `Desconto: ${cupom.valor}%`
+                : `Desconto: R$${cupom.valor.toFixed(2)}`}
+            </p>
+            <p>Válido até: {new Date(cupom.validade).toLocaleDateString()}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
-                  }
+}
+export default AdminCoupons;
