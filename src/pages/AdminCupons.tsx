@@ -1,43 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Button } from "@/components/ui/button";
+import { useAuthState } from "@/hooks/useAuthState";
+import { useEmpresa } from "@/hooks/useEmpresa";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    id: null,
     codigo: "",
     tipo: "percentual",
     valor: "",
     validade: "",
   });
 
-  const empresa_id = localStorage.getItem("empresa_id");
+  const { user } = useAuthState();
+  const { empresa } = useEmpresa(user?.id ?? null);
 
   useEffect(() => {
-    if (empresa_id) {
+    if (empresa?.id) {
       fetchCupons();
     }
-  }, [empresa_id]);
+  }, [empresa]);
 
-  async function fetchCupons() {
+  const fetchCupons = async () => {
     const { data, error } = await supabase
       .from("cupons")
       .select("*")
-      .eq("empresa_id", empresa_id)
-      .order("validade", { ascending: false });
+      .eq("empresa_id", empresa?.id);
 
     if (error) {
-      console.error("Erro ao buscar cupons:", error);
+      console.error("Erro ao buscar cupons:", error.message);
     } else {
       setCupons(data || []);
     }
-  }
+  };
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const payload = {
@@ -45,169 +46,122 @@ export default function AdminCupons() {
       tipo: formData.tipo,
       valor: parseFloat(formData.valor),
       validade: formData.validade,
-      empresa_id,
+      empresa_id: empresa?.id,
     };
 
-    if (editMode && formData.id) {
-      const { error } = await supabase
-        .from("cupons")
-        .update(payload)
-        .eq("id", formData.id);
-
-      if (error) {
-        console.error("Erro ao atualizar cupom:", error);
-        return;
-      }
+    let result;
+    if (editId) {
+      result = await supabase.from("cupons").update(payload).eq("id", editId);
     } else {
-      const { error } = await supabase.from("cupons").insert(payload);
-      if (error) {
-        console.error("Erro ao criar cupom:", error);
-        return;
-      }
+      result = await supabase.from("cupons").insert(payload);
     }
 
-    setFormData({
-      id: null,
-      codigo: "",
-      tipo: "percentual",
-      valor: "",
-      validade: "",
-    });
-    setOpen(false);
-    setEditMode(false);
-    fetchCupons();
-  }
+    if (result.error) {
+      console.error("Erro ao salvar cupom:", result.error.message);
+    } else {
+      fetchCupons();
+      setFormData({ codigo: "", tipo: "percentual", valor: "", validade: "" });
+      setEditId(null);
+      setOpen(false);
+    }
+  };
 
-  function handleEdit(cupom: any) {
+  const handleEdit = (cupom: any) => {
     setFormData({
-      id: cupom.id,
       codigo: cupom.nome,
       tipo: cupom.tipo,
       valor: cupom.valor.toString(),
-      validade: cupom.validade?.split("T")[0] || "",
+      validade: cupom.validade,
     });
-    setEditMode(true);
+    setEditId(cupom.id);
     setOpen(true);
-  }
+  };
 
-  async function handleDelete(id: string) {
-    if (!confirm("Tem certeza que deseja excluir este cupom?")) return;
+  const handleDelete = async (id: string) => {
+    const confirm = window.confirm("Tem certeza que deseja excluir este cupom?");
+    if (!confirm) return;
 
     const { error } = await supabase.from("cupons").delete().eq("id", id);
     if (error) {
-      console.error("Erro ao excluir cupom:", error);
+      console.error("Erro ao excluir cupom:", error.message);
     } else {
       fetchCupons();
     }
-  }
+  };
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Cupons de Desconto</h2>
+    <div className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Cupons de Desconto</h1>
 
-      <Button className="mb-4" onClick={() => { setOpen(true); setEditMode(false); }}>
-        Criar Cupom
+      <Button className="mb-4" onClick={() => { setOpen(true); setEditId(null); }}>
+        Novo Cupom
       </Button>
 
-      <table className="w-full text-left border border-zinc-700">
-        <thead>
-          <tr className="bg-zinc-800 text-white">
-            <th className="p-2">Código</th>
-            <th className="p-2">Tipo</th>
-            <th className="p-2">Valor</th>
-            <th className="p-2">Validade</th>
-            <th className="p-2">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cupons.map((cupom) => (
-            <tr key={cupom.id} className="border-t border-zinc-700 hover:bg-zinc-900">
-              <td className="p-2">{cupom.nome}</td>
-              <td className="p-2">{cupom.tipo}</td>
-              <td className="p-2">
-                {cupom.tipo === "percentual"
-                  ? `${cupom.valor}%`
-                  : `R$ ${cupom.valor.toFixed(2).replace(".", ",")}`}
-              </td>
-              <td className="p-2">
-                {new Date(cupom.validade).toLocaleDateString("pt-BR")}
-              </td>
-              <td className="p-2 flex gap-2">
-                <Button variant="outline" onClick={() => handleEdit(cupom)}>Editar</Button>
-                <Button variant="destructive" onClick={() => handleDelete(cupom.id)}>Excluir</Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
       {open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-900 p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">
-              {editMode ? "Editar Cupom" : "Novo Cupom"}
-            </h3>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                placeholder="Código do cupom"
-                value={formData.codigo}
-                onChange={(e) =>
-                  setFormData({ ...formData, codigo: e.target.value })
-                }
-              />
-
-              <select
-                className="w-full p-2 bg-zinc-800 text-white rounded"
-                value={formData.tipo}
-                onChange={(e) =>
-                  setFormData({ ...formData, tipo: e.target.value })
-                }
-              >
-                <option value="percentual">Percentual (%)</option>
-                <option value="valor_fixo">Valor Fixo (R$)</option>
-              </select>
-
-              <Input
-                type="number"
-                placeholder="Valor"
-                value={formData.valor}
-                onChange={(e) =>
-                  setFormData({ ...formData, valor: e.target.value })
-                }
-              />
-
-              <Input
-                type="date"
-                value={formData.validade}
-                onChange={(e) =>
-                  setFormData({ ...formData, validade: e.target.value })
-                }
-              />
-
-              <div className="flex justify-between mt-4">
-                <Button type="submit">{editMode ? "Salvar" : "Criar"}</Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setOpen(false);
-                    setEditMode(false);
-                    setFormData({
-                      id: null,
-                      codigo: "",
-                      tipo: "percentual",
-                      valor: "",
-                      validade: "",
-                    });
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
+        <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+          <Input
+            placeholder="Código do cupom"
+            value={formData.codigo}
+            onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+          />
+          <select
+            value={formData.tipo}
+            onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+            className="border p-2 rounded w-full"
+          >
+            <option value="percentual">Percentual (%)</option>
+            <option value="fixo">Valor Fixo (R$)</option>
+          </select>
+          <Input
+            type="number"
+            placeholder="Valor do desconto"
+            value={formData.valor}
+            onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+          />
+          <Input
+            type="date"
+            value={formData.validade}
+            onChange={(e) => setFormData({ ...formData, validade: e.target.value })}
+          />
+          <div className="flex gap-2">
+            <Button type="submit">{editId ? "Salvar Alterações" : "Criar Cupom"}</Button>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
           </div>
-        </div>
+        </form>
       )}
+
+      <ul className="space-y-3">
+        {cupons.map((cupom) => (
+          <li
+            key={cupom.id}
+            className="border p-4 rounded flex items-center justify-between"
+          >
+            <div>
+              <p className="font-semibold">{cupom.nome}</p>
+              <p className="text-sm text-gray-600">
+                {cupom.tipo === "percentual"
+                  ? `${cupom.valor}% de desconto`
+                  : `R$ ${cupom.valor.toFixed(2)} de desconto`}{" "}
+                - válido até {cupom.validade}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => handleEdit(cupom)}>
+                Editar
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleDelete(cupom.id)}
+              >
+                Deletar
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
