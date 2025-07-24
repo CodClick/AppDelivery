@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-// import { supabase } from "@/lib/supabaseClient"; // Assuming this path is correct for your project
-// Assuming shadcn/ui components are available and imported correctly
+import { supabase } from "@/lib/supabaseClient"; // Importação original do Supabase
 import {
   Dialog,
   DialogContent,
@@ -12,69 +11,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// import { toast } from "sonner"; // Assuming sonner toast is available
-
-// --- Mocks para Supabase e Toast (REMOVA ESTES NO SEU PROJETO REAL) ---
-// Estes mocks permitem que o código seja executável independentemente para demonstração.
-// No seu projeto, você usaria suas importações reais.
-const supabase = {
-  auth: {
-    getUser: async () => ({
-      data: { user: { id: "mock-user-id" } }, // Mock user for demonstration
-      error: null,
-    }),
-  },
-  from: (tableName: string) => ({
-    select: (columns: string) => ({
-      eq: (column: string, value: any) => ({
-        single: async () => {
-          if (tableName === "usuarios" && column === "id" && value === "mock-user-id") {
-            return { data: { empresa_id: "mock-empresa-id" }, error: null }; // Mock company ID
-          }
-          return { data: null, error: new Error("Mock error: User not found") };
-        },
-      }),
-    }),
-    insert: async (data: any[]) => {
-      console.log("Mock Supabase Insert:", data);
-      return { error: null }; // Mock success
-    },
-    update: (data: any) => ({
-      eq: async (column: string, value: any) => {
-        console.log(`Mock Supabase Update: Table: ${tableName}, ID: ${value}, Data:`, data);
-        return { error: null }; // Mock success
-      },
-    }),
-    delete: () => ({
-      eq: async (column: string, value: any) => {
-        console.log(`Mock Supabase Delete: Table: ${tableName}, ID: ${value}`);
-        return { error: null }; // Mock success
-      },
-    }),
-  }),
-};
-
-const toast = {
-  error: (message: string) => console.error("Toast Error:", message),
-  success: (message: string) => console.log("Toast Success:", message),
-};
-// --- FIM DOS MOCKS ---
-
+import { toast } from "sonner"; // Importação original do toast
 
 export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
-  const [open, setOpen] = useState(false); // Controls the create/edit dialog
+  const [open, setOpen] = useState(false); // Controla o diálogo de criar/editar
   const [formData, setFormData] = useState({
     nome: "",
     tipo: "percentual",
     valor: "",
     validade: "",
   });
-  const [editingCupom, setEditingCupom] = useState<any | null>(null); // Stores the coupon being edited
+  const [editingCupom, setEditingCupom] = useState<any | null>(null); // Armazena o cupom sendo editado
 
   const [empresaId, setEmpresaId] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Controls delete confirmation dialog
-  const [cupomToDelete, setCupomToDelete] = useState<any | null>(null); // Stores the coupon to be deleted
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Controla o diálogo de confirmação de exclusão
+  const [cupomToDelete, setCupomToDelete] = useState<any | null>(null); // Armazena o cupom a ser excluído
 
 
   // 🔐 Buscar o ID da empresa do admin logado
@@ -108,16 +60,7 @@ export default function AdminCupons() {
   }, []);
 
   const fetchCupons = async () => {
-    if (!empresaId) return; // Ensure empresaId is available before fetching
-
-    // Mock data for demonstration if no real Supabase is connected
-    if (empresaId === "mock-empresa-id" && cupons.length === 0) {
-        setCupons([
-            { id: "1", nome: "DESCONTO10", tipo: "percentual", valor: 10, validade: "2025-12-31", empresa_id: "mock-empresa-id" },
-            { id: "2", nome: "FRETEGRATIS", tipo: "valor_fixo", valor: 5.00, validade: "2024-11-15", empresa_id: "mock-empresa-id" },
-        ]);
-        return;
-    }
+    if (!empresaId) return; // Garante que o empresaId esteja disponível antes de buscar
 
     const { data, error } = await supabase
       .from("cupons")
@@ -133,15 +76,15 @@ export default function AdminCupons() {
 
   useEffect(() => {
     if (empresaId) fetchCupons();
-  }, [empresaId]); // Re-fetch cupons when empresaId changes
+  }, [empresaId]); // Busca os cupons novamente quando o empresaId muda
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleOpenCreateDialog = () => {
-    setEditingCupom(null); // Clear any editing state
-    setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" }); // Reset form
+    setEditingCupom(null); // Limpa qualquer estado de edição
+    setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" }); // Reseta o formulário
     setOpen(true);
   };
 
@@ -150,8 +93,8 @@ export default function AdminCupons() {
     setFormData({
       nome: cupom.nome,
       tipo: cupom.tipo,
-      valor: String(cupom.valor).replace(".", ","), // Convert to string and use comma for input
-      validade: cupom.validade, // Assuming validade is already in 'YYYY-MM-DD' format
+      valor: String(cupom.valor).replace(".", ","), // Converte para string e usa vírgula para o input
+      validade: cupom.validade, // Assume que 'validade' já está no formato 'YYYY-MM-DD'
     });
     setOpen(true);
   };
@@ -174,7 +117,7 @@ export default function AdminCupons() {
       toast.error("Erro ao excluir cupom!");
     } else {
       toast.success("Cupom excluído com sucesso!");
-      fetchCupons(); // Refresh the list
+      fetchCupons(); // Atualiza a lista
     }
     setShowDeleteConfirm(false);
     setCupomToDelete(null);
@@ -191,7 +134,7 @@ export default function AdminCupons() {
     const valorNumber = parseFloat(valor.replace(",", "."));
 
     if (editingCupom) {
-      // Update existing coupon
+      // Atualiza o cupom existente
       const { error } = await supabase
         .from("cupons")
         .update({
@@ -208,11 +151,11 @@ export default function AdminCupons() {
       } else {
         toast.success("Cupom atualizado com sucesso!");
         setOpen(false);
-        setEditingCupom(null); // Clear editing state
-        fetchCupons(); // Refresh the list
+        setEditingCupom(null); // Limpa o estado de edição
+        fetchCupons(); // Atualiza a lista
       }
     } else {
-      // Create new coupon
+      // Cria um novo cupom
       const { error } = await supabase.from("cupons").insert([
         {
           nome,
@@ -229,8 +172,8 @@ export default function AdminCupons() {
       } else {
         toast.success("Cupom criado com sucesso!");
         setOpen(false);
-        setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" }); // Reset form
-        fetchCupons(); // Refresh the list
+        setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" }); // Reseta o formulário
+        fetchCupons(); // Atualiza a lista
       }
     }
   };
