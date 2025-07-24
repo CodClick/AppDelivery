@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-  function AdminCupons() {
+  export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -188,4 +188,4 @@ import { toast } from "sonner";
     </div>
   );
 }
-export default AdminCoupons;
+
