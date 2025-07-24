@@ -176,7 +176,7 @@ import { toast } from "sonner";
         {cupons.map((cupom) => (
           <div key={cupom.id} className="p-4 border rounded-lg shadow">
             <h2 className="font-semibold">{cupom.nome}</h2>
-            <p>}
+            <p>
               {cupom.tipo === "percentual"}
                 ? Desconto: ${cupom.valor}%
                 : Desconto: ${cupom.valor.toFixed(2)}}
