@@ -177,7 +177,7 @@ import { toast } from "sonner";
           <div key={cupom.id} className="p-4 border rounded-lg shadow">
             <h2 className="font-semibold">{cupom.nome}</h2>
             <p>}
-              {cupom.tipo === "percentual"
+              {cupom.tipo === "percentual"}
                 ? Desconto: ${cupom.valor}%
                 : Desconto: ${cupom.valor.toFixed(2)}}
             </p>
