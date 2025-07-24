@@ -17,11 +17,27 @@ export default function AdminCupons() {
 
   const empresa_id = localStorage.getItem("empresa_id");
 
-  useEffect(() => {
-    if (empresa_id) {
-      fetchCupons();
+useEffect(() => {
+  if (!empresa?.id) return; // ⛔️ Espera o empresa.id existir
+
+  const fetchCupons = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("cupons")
+        .select("*")
+        .eq("empresa_id", empresa.id)
+        .order("validade", { ascending: false });
+
+      if (error) throw error;
+      setCupons(data);
+    } catch (error) {
+      console.error("Erro ao buscar cupons: ", error);
     }
-  }, [empresa_id]);
+  };
+
+  fetchCupons();
+}, [empresa?.id]); // 👈 Dependência certa
+
 
   async function fetchCupons() {
     const { data, error } = await supabase
