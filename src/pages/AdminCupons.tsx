@@ -52,25 +52,36 @@ export default function AdminCupons() {
     }
   }
 
-  async function criarCupom() {
-    if (!form.nome || !form.valor || !form.validade || !empresa?.id) return;
+async function criarCupom() {
+  try {
+    if (!form.nome || !form.valor || !form.validade || !empresa?.id) {
+      console.warn("Campos obrigatórios não preenchidos.");
+      return;
+    }
 
-    const { error } = await supabase.from("cupons").insert({
+    const newCupom = {
       nome: form.nome,
       tipo: form.tipo,
       valor: parseFloat(form.valor),
       validade: form.validade,
       empresa_id: empresa.id,
-    });
+    };
 
-    if (!error) {
+    const { data, error } = await supabase.from("cupons").insert(newCupom);
+
+    if (error) {
+      console.error("Erro ao inserir cupom:", error.message, error.details);
+    } else {
+      console.log("Cupom criado com sucesso:", data);
       setForm({ nome: "", tipo: "percentual", valor: "", validade: "" });
       setOpen(false);
       fetchCupons();
-    } else {
-      console.error("Erro ao criar cupom:", error);
     }
+  } catch (err) {
+    console.error("Erro inesperado ao criar cupom:", err);
   }
+}
+
 
   return (
     <div className="p-6">
