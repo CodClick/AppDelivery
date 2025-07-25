@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { getAllMenuItems } from "@/services/menuItemService";
 import { getAllCategories } from "@/services/categoryService";
@@ -9,14 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { useNavigate } from "react-router-dom"; // Importe useNavigate
 
 const Index = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const { itemCount, isCartOpen, setIsCartOpen } = useCart();
-  const navigate = useNavigate(); // Inicialize useNavigate
 
   useEffect(() => {
     const loadMenuItems = async () => {
@@ -34,8 +33,8 @@ const Index = () => {
   }, []);
 
   // Filtrar itens por categoria
-  const filteredItems = activeCategory === "all"
-    ? menuItems
+  const filteredItems = activeCategory === "all" 
+    ? menuItems 
     : menuItems.filter(item => item.category === activeCategory);
 
   // Agrupar itens filtrados por categoria para exibição
@@ -54,18 +53,7 @@ const Index = () => {
 
   return (
     <div>
-      {/* Container para o cabeçalho do restaurante e o botão de login */}
-      <div className="flex justify-between items-center px-4 py-4">
-        <RestaurantHeader />
-        <Button
-          onClick={() => navigate("/login")} // Navega para a página de login
-          variant="default" // Ou "outline", "ghost" dependendo do estilo desejado
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out"
-        >
-          Entrar
-        </Button>
-      </div>
-
+      <RestaurantHeader />
       <CategoryNav 
         categories={categories} 
         activeCategory={activeCategory}
