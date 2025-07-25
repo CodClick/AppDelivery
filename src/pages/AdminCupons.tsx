@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient"; // Importação original do Supabase
+import { useNavigate } from "react-router-dom"; // Importe useNavigate para navegação
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner"; // Importação original do toast
+
+// Se você tiver um hook de autenticação (ex: useAuth), descomente a linha abaixo
+// import { useAuth } from "@/hooks/useAuth"; 
 
 export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
@@ -27,6 +31,15 @@ export default function AdminCupons() {
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Controla o diálogo de confirmação de exclusão
   const [cupomToDelete, setCupomToDelete] = useState<any | null>(null); // Armazena o cupom a ser excluído
+
+  const navigate = useNavigate(); // Usa o useNavigate real
+  // Se você tiver um hook de autenticação, obtenha logOut dele:
+  // const { logOut } = useAuth();
+  // Caso contrário, você pode definir uma função logOut simples aqui:
+  const logOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/"); // Redireciona para a página inicial após o logout
+  };
 
 
   // 🔐 Buscar o ID da empresa do admin logado
@@ -182,79 +195,101 @@ export default function AdminCupons() {
     <div className="p-6 max-w-4xl mx-auto font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Cupons de Desconto</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenCreateDialog} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
-              Criar Cupom
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-white p-6 rounded-lg shadow-xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-gray-800">
-                {editingCupom ? "Editar Cupom" : "Novo Cupom"}
-              </DialogTitle>
-              <DialogDescription className="text-gray-600">
-                {editingCupom ? "Edite os dados do cupom." : "Preencha os dados para criar um novo cupom."}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">Código do Cupom</Label>
-                <Input
-                  id="nome"
-                  name="nome"
-                  value={formData.nome}
-                  onChange={handleChange}
-                  placeholder="EX: BEMVINDO10"
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="tipo" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Desconto</Label>
-                <select
-                  id="tipo"
-                  name="tipo"
-                  value={formData.tipo}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="percentual">Porcentagem (%)</option>
-                  <option value="valor_fixo">Valor Fixo (R$)</option>
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="valor" className="block text-sm font-medium text-gray-700 mb-1">Valor</Label>
-                <Input
-                  id="valor"
-                  name="valor"
-                  value={formData.valor}
-                  onChange={handleChange}
-                  placeholder={formData.tipo === "percentual" ? "Ex: 10 (%)" : "Ex: 5.00 (R$)"}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="validade" className="block text-sm font-medium text-gray-700 mb-1">Validade</Label>
-                <Input
-                  id="validade"
-                  type="date"
-                  name="validade"
-                  value={formData.validade}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
-                {editingCupom ? "Atualizar Cupom" : "Salvar Cupom"}
+        <div className="flex gap-2 items-center"> {/* Container para os botões de navegação e criar */}
+          <Button
+            onClick={() => navigate("/admin-dashboard")}
+            className="bg-[#fa6500] hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center gap-2"
+          >
+            {/* ArrowLeft Icon (SVG) */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
+              <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+            </svg>
+            Dashboard
+          </Button>
+          <Button
+            onClick={logOut} // Usa a função de logout
+            className="bg-[#b40000] hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center gap-2"
+          >
+            {/* LogOut Icon (SVG) */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" x2="10" y1="12" y2="12"/>
+            </svg>
+            Sair
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleOpenCreateDialog} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
+                Criar Cupom
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="bg-white p-6 rounded-lg shadow-xl">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-gray-800">
+                  {editingCupom ? "Editar Cupom" : "Novo Cupom"}
+                </DialogTitle>
+                <DialogDescription className="text-gray-600">
+                  {editingCupom ? "Edite os dados do cupom." : "Preencha os dados para criar um novo cupom."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">Código do Cupom</Label>
+                  <Input
+                    id="nome"
+                    name="nome"
+                    value={formData.nome}
+                    onChange={handleChange}
+                    placeholder="EX: BEMVINDO10"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="tipo" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Desconto</Label>
+                  <select
+                    id="tipo"
+                    name="tipo"
+                    value={formData.tipo}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="percentual">Porcentagem (%)</option>
+                    <option value="valor_fixo">Valor Fixo (R$)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="valor" className="block text-sm font-medium text-gray-700 mb-1">Valor</Label>
+                  <Input
+                    id="valor"
+                    name="valor"
+                    value={formData.valor}
+                    onChange={handleChange}
+                    placeholder={formData.tipo === "percentual" ? "Ex: 10 (%)" : "Ex: 5.00 (R$)"}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="validade" className="block text-sm font-medium text-gray-700 mb-1">Validade</Label>
+                  <Input
+                    id="validade"
+                    type="date"
+                    name="validade"
+                    value={formData.validade}
+                    onChange={handleChange}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
+                  {editingCupom ? "Atualizar Cupom" : "Salvar Cupom"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
