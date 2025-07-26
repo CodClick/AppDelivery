@@ -79,22 +79,7 @@ const Index = () => {
         )}
       </div>
 
-      <div className="fixed bottom-4 right-4 z-50">
-        <Button
-          onClick={() => setIsCartOpen(true)}
-          className="bg-brand hover:bg-brand-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg"
-        >
-          <ShoppingCart className="h-6 w-6" />
-          {itemCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
-            >
-              {itemCount}
-            </Badge>
-          )}
-        </Button>
-      </div>
+      
     </div>
   );
 };
