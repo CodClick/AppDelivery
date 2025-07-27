@@ -1,4 +1,4 @@
-import React, { useState, useEffect } => React;
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient"; // Importação original do Supabase
 import { useNavigate } from "react-router-dom"; // Importe useNavigate para navegação
 import {
