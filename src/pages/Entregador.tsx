@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Order } from "@/types/order"; // Assumindo que Order inclui deliveryAddress e detalhes dos itens
+import { Order } from "@/types/order"; // Seu tipo Order atualizado
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -39,10 +39,7 @@ const Entregador = () => {
       const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        // Certifique-se de que `createdAt` e outros campos de data/timestamp
-        // sejam convertidos para Date se você os usar diretamente
         createdAt: doc.data().createdAt?.toDate() || new Date(),
-        // Inclua outros campos que precisam de conversão, se houver
       })) as Order[];
       setOrders(fetchedOrders);
       setLoading(false);
@@ -52,7 +49,6 @@ const Entregador = () => {
   }, []);
 
   const handleConfirmEntrega = async (order: Order) => {
-    // Corrigido: verificar se o pagamento é "cash" em vez de "dinheiro"
     const novoStatus = order.paymentMethod === "cash" ? "received" : "delivered";
 
     try {
@@ -61,7 +57,6 @@ const Entregador = () => {
         title: "Status atualizado",
         description: `Pedido #${order.id.substring(0, 6)} marcado como ${translateStatus(novoStatus)}`,
       });
-      // Remove o pedido da lista após a atualização bem-sucedida
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
     } catch (err) {
       console.error(err);
@@ -91,10 +86,10 @@ const Entregador = () => {
 
   const translatePaymentMethod = (method: Order["paymentMethod"]) => {
     switch (method) {
-      case "credit_card": return "Cartão de Crédito";
-      case "debit_card": return "Cartão de Débito";
+      case "card": return "Cartão (Crédito/Débito)"; // Ajustado para "card"
       case "cash": return "Dinheiro";
       case "pix": return "PIX";
+      case "payroll_discount": return "Desconto em Folha";
       default: return method;
     }
   };
@@ -121,17 +116,6 @@ const Entregador = () => {
     }).format(date);
   };
 
-  // Função para formatar o endereço
-  const formatAddress = (address: Order['deliveryAddress']) => {
-    if (!address) return "Endereço não disponível";
-    const { street, number, neighborhood, city, state, zipCode, complement } = address;
-    let fullAddress = `${street}, ${number}`;
-    if (complement) fullAddress += ` - ${complement}`;
-    fullAddress += `, ${neighborhood}, ${city}/${state}`;
-    if (zipCode) fullAddress += ` - CEP: ${zipCode}`;
-    return fullAddress;
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Pedidos em rota de entrega</h1>
@@ -150,19 +134,18 @@ const Entregador = () => {
                   <p className="text-base font-medium text-gray-700">
                     Cliente: {order.customerName}
                   </p>
-                  {/* Número de WhatsApp do cliente */}
                   <p className="text-sm text-gray-500">
-                    Fone: <a href={`https://wa.me/${order.customerPhone}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    Fone: <a href={`https://wa.me/55${order.customerPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                       {order.customerPhone}
                     </a>
                   </p>
                 </div>
               </CardHeader>
               <CardContent className="py-4 space-y-2">
-                {/* Endereço completo do cliente */}
+                {/* Endereço completo do cliente - AGORA USANDO order.address DIRETAMENTE */}
                 <div>
                   <p className="font-semibold text-sm">Endereço de Entrega:</p>
-                  <p className="text-sm text-gray-700">{formatAddress(order.deliveryAddress)}</p>
+                  <p className="text-sm text-gray-700">{order.address || "Endereço não disponível"}</p>
                 </div>
 
                 {/* Pedido completo do cliente */}
@@ -170,17 +153,29 @@ const Entregador = () => {
                   <p className="font-semibold text-sm">Itens do Pedido:</p>
                   <ul className="list-disc list-inside text-sm text-gray-700">
                     {order.items.map((item, index) => (
-                      <li key={index}>
+                      <li key={item.menuItemId + "-" + index}> {/* Usando menuItemId e index para chave */}
                         {item.quantity}x {item.name} - R$ {(item.price * item.quantity).toFixed(2)}
-                        {item.notes && <span className="text-gray-500 italic"> ({item.notes})</span>}
-                        {/* Se tiver adicionais ou modificações, você pode mapeá-los aqui */}
-                        {item.addons && item.addons.length > 0 && (
+                        {/* Exibir variações, se existirem */}
+                        {item.selectedVariations && item.selectedVariations.length > 0 && (
                           <ul className="list-disc list-inside ml-4 text-xs text-gray-600">
-                            {item.addons.map((addon, idx) => (
-                              <li key={idx}>+ {addon.name} (R$ {addon.price.toFixed(2)})</li>
+                            {item.selectedVariations.map((group, groupIdx) => (
+                              <li key={group.groupId + "-" + groupIdx}>
+                                **{group.groupName}**:
+                                <ul className="list-disc list-inside ml-4 text-xs text-gray-600">
+                                  {group.variations.map((variation, varIdx) => (
+                                    <li key={variation.variationId + "-" + varIdx}>
+                                      {variation.quantity}x {variation.name}
+                                      {variation.additionalPrice && variation.additionalPrice > 0 &&
+                                        ` (R$ ${variation.additionalPrice.toFixed(2)})`
+                                      }
+                                    </li>
+                                  ))}
+                                </ul>
+                              </li>
                             ))}
                           </ul>
                         )}
+                        {item.priceFrom && <span className="text-gray-500 italic"> (Preço a consultar)</span>}
                       </li>
                     ))}
                   </ul>
@@ -191,6 +186,13 @@ const Entregador = () => {
                   <p className="font-semibold text-sm">Forma de Pagamento:</p>
                   <p className="text-sm text-gray-700">{translatePaymentMethod(order.paymentMethod)}</p>
                 </div>
+
+                {order.observations && (
+                  <div>
+                    <p className="font-semibold text-sm">Observações:</p>
+                    <p className="text-sm text-gray-700 italic">{order.observations}</p>
+                  </div>
+                )}
 
                 <p className="font-medium text-lg text-right">Total: R$ {order.total.toFixed(2)}</p>
 
@@ -207,4 +209,4 @@ const Entregador = () => {
 };
 
 export default Entregador;
-                  
+                                        
