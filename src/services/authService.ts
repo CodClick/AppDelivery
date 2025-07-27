@@ -58,14 +58,17 @@ interface AdminSignupData {
   empresa_telefone: string; // Telefone da empresa
 }
 
+// services/authService.ts
+
+// ... (código anterior) ...
+
 export async function signUpAdmin({
   email,
   password,
-  nome, // Nome do usuário admin
-  empresa_nome, // Nome da empresa
-  empresa_telefone, // Telefone da empresa
+  nome,
+  empresa_nome,
+  empresa_telefone,
 }: AdminSignupData): Promise<any> {
-  // --- INÍCIO DA FUNÇÃO signUpAdmin CORRIGIDA ---
   try {
     // 1. Criar usuário no Supabase Auth
     const { data: userData, error: authError } = await supabase.auth.signUp({
@@ -80,19 +83,23 @@ export async function signUpAdmin({
 
     const user = userData.user;
     if (!user) {
+      console.error("Usuário NULO após Supabase Auth SignUp. userData:", userData); // Novo log
       throw new Error("Usuário não retornado após o signup. Verifique as configurações de autenticação.");
     }
 
     const userId = user.id;
-    let empresaId: string | null = null; // Para armazenar o ID da empresa
+    let empresaId: string | null = null;
 
-    // Gerar o slug a partir do nome da empresa
+    console.log("UserID obtido após signUp:", userId); // NOVO LOG
+    console.log("Email do usuário:", user.email); // NOVO LOG
+
+    // Gerar o slug
     const slugGerado = empresa_nome
       .toLowerCase()
-      .replace(/\s+/g, '-')       // Substitui espaços por hífens
-      .replace(/[^\w-]+/g, '')    // Remove caracteres não alfanuméricos (exceto hífens)
-      .replace(/--+/g, '-')      // Substitui múltiplos hífens por um único
-      .trim();                    // Remove espaços extras
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/--+/g, '-')
+      .trim();
 
     // 2. Inserir a nova empresa na tabela 'empresas'
     const { data: empresaData, error: insertEmpresaError } = await supabase
@@ -100,28 +107,27 @@ export async function signUpAdmin({
       .insert({
         nome: empresa_nome,
         telefone: empresa_telefone,
-        slug: slugGerado, // <-- AGORA O SLUG ESTÁ SENDO INSERIDO!
-        admin_id: userId, // Associando o admin_id recém-criado à empresa
+        slug: slugGerado,
+        admin_id: userId, // Usando o userId obtido
       })
-      .select("id") // Pede para retornar o ID da empresa recém-criada
-      .single(); // Espera um único resultado
+      .select("id")
+      .single();
 
     if (insertEmpresaError) {
-      console.error("Erro ao inserir empresa:", insertEmpresaError);
-      // Opcional: Se a empresa não for criada, você pode tentar deletar o usuário
-      // criado no auth.users para evitar registros órfãos. Isso é mais avançado.
+      console.error("Erro ao inserir empresa. Dados passados:", { nome: empresa_nome, telefone: empresa_telefone, slug: slugGerado, admin_id: userId }); // Novo log
       throw new Error(insertEmpresaError.message || "Falha ao criar os dados da empresa.");
     }
 
-    empresaId = empresaData.id; // Pega o ID da empresa recém-criada
+    empresaId = empresaData.id;
+
+    console.log("Empresa criada com sucesso. Empresa ID:", empresaId); // Novo log
 
     // 3. Inserir o perfil do usuário (admin) na tabela 'usuarios'
     const { error: insertUserError } = await supabase.from("usuarios").insert({
-      id: userId, // O ID da tabela usuarios é o user_id do auth.users
-      nome: nome, // O nome do administrador
-      role: "admin", // Definir a role como 'admin'
-      empresa_id: empresaId, // Associar o admin à empresa que ele acabou de criar
-      // Outras colunas como 'telefone' para o usuário admin, se houver no seu schema de 'usuarios'
+      id: userId,
+      nome: nome,
+      role: "admin",
+      empresa_id: empresaId,
     });
 
     if (insertUserError) {
@@ -129,10 +135,11 @@ export async function signUpAdmin({
       throw new Error(insertUserError.message || "Falha ao criar o perfil do administrador.");
     }
 
-    return userData; // Retorna os dados do signup original, que incluem a sessão se o auto-login estiver ativado
+    console.log("Perfil do usuário admin criado com sucesso."); // Novo log
+
+    return userData;
   } catch (error: any) {
     console.error("Erro geral no signUpAdmin:", error);
-    throw error; // Relança o erro para ser capturado no AdminRegister.tsx
+    throw error;
   }
-  // --- FIM DA FUNÇÃO signUpAdmin CORRIGIDA ---
 }
