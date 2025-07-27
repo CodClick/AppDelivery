@@ -1,7 +1,10 @@
+// src/pages/ShoppingCart.tsx
+
 import React, { useState, useEffect } from "react";
 import { useCart } from "@/contexts/CartContext";
-import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash2, Tag, XCircle } from "lucide-react"; // Importe Tag e XCircle
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // Importe Input
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,13 +24,19 @@ const ShoppingCart: React.FC = () => {
     isCartOpen,
     setIsCartOpen,
     itemCount,
+    applyCoupon,        // Novo
+    appliedCoupon,      // Novo
+    removeCoupon,       // Novo
+    discountAmount,     // Novo
+    finalTotal,         // Novo
   } = useCart();
-  
+
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [variations, setVariations] = useState<Variation[]>([]);
   const [variationsLoading, setVariationsLoading] = useState(true);
+  const [couponCodeInput, setCouponCodeInput] = useState<string>(""); // Novo estado para o input do cupom
 
   // Load all variations when the component mounts
   useEffect(() => {
@@ -41,9 +50,22 @@ const ShoppingCart: React.FC = () => {
         setVariationsLoading(false);
       }
     };
-    
+
     loadVariations();
   }, []);
+
+  const handleApplyCoupon = async () => {
+    if (couponCodeInput.trim() === "") {
+      toast({
+        title: "Código de cupom vazio",
+        description: "Por favor, digite um código de cupom.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await applyCoupon(couponCodeInput);
+    setCouponCodeInput(""); // Limpa o campo após tentar aplicar
+  };
 
   const handleCheckout = () => {
     if (!currentUser) {
@@ -56,7 +78,7 @@ const ShoppingCart: React.FC = () => {
       navigate("/login");
       return;
     }
-    
+
     setIsCartOpen(false);
     navigate("/checkout");
   };
@@ -71,14 +93,10 @@ const ShoppingCart: React.FC = () => {
 
   // Função para obter o nome da variação a partir do ID
   const getVariationName = (variationId: string): string => {
-    // Procurar a variação no estado local
     const variation = variations.find(v => v.id === variationId);
-    
     if (variation) {
       return variation.name;
     }
-    
-    // Se não encontrar (enquanto está carregando), retornar um placeholder
     return variationsLoading ? "Carregando..." : "Variação não encontrada";
   };
 
@@ -91,7 +109,6 @@ const ShoppingCart: React.FC = () => {
   // Função para calcular o valor total das variações de um item
   const calculateVariationsTotal = (item: any): number => {
     let variationsTotal = 0;
-    
     if (item.selectedVariations && item.selectedVariations.length > 0) {
       item.selectedVariations.forEach((group: any) => {
         if (group.variations && group.variations.length > 0) {
@@ -104,13 +121,11 @@ const ShoppingCart: React.FC = () => {
         }
       });
     }
-    
     return variationsTotal;
   };
 
   // Função para calcular o total do item (base + variações) x quantidade
   const calculateItemTotal = (item: any): number => {
-    // Se o item tem "a partir de", o preço base é 0
     const basePrice = item.priceFrom ? 0 : (item.price || 0);
     const variationsTotal = calculateVariationsTotal(item);
     return (basePrice + variationsTotal) * item.quantity;
@@ -172,7 +187,6 @@ const ShoppingCart: React.FC = () => {
           <>
             <div className="space-y-4 mb-6">
               {cartItems.map((item) => {
-                // Se o item tem "a partir de", o preço base é 0
                 const basePrice = item.priceFrom ? 0 : (item.price || 0);
                 const variationsTotal = calculateVariationsTotal(item);
                 const itemTotal = calculateItemTotal(item);
@@ -200,8 +214,7 @@ const ShoppingCart: React.FC = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
-                      {/* Preço base do item */}
+
                       <div className="text-sm text-gray-600">
                         {item.priceFrom ? (
                           <span>Item: <span className="text-xs text-gray-500">a partir de</span> {formatCurrency(0)}</span>
@@ -209,8 +222,7 @@ const ShoppingCart: React.FC = () => {
                           <span>Item: {formatCurrency(basePrice)}</span>
                         )}
                       </div>
-                      
-                      {/* Variações selecionadas */}
+
                       {item.selectedVariations && item.selectedVariations.length > 0 && (
                         <div className="mt-2 text-sm">
                           {item.selectedVariations.map((group, index) => (
@@ -236,8 +248,7 @@ const ShoppingCart: React.FC = () => {
                               }
                             </div>
                           ))}
-                          
-                          {/* Total das variações */}
+
                           {variationsTotal > 0 && (
                             <div className="text-xs text-green-600 font-medium border-t border-gray-200 pt-1">
                               Complementos/Adicionais: {formatCurrency(variationsTotal)}
@@ -245,12 +256,11 @@ const ShoppingCart: React.FC = () => {
                           )}
                         </div>
                       )}
-                      
-                      {/* Subtotal unitário */}
+
                       <div className="text-sm font-medium text-brand-600 mt-1">
                         Subtotal: {formatCurrency(basePrice + variationsTotal)}
                       </div>
-                      
+
                       <div className="flex items-center mt-2">
                         <button
                           onClick={() => decreaseQuantity(item.id)}
@@ -274,12 +284,64 @@ const ShoppingCart: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Seção de Cupons */}
+            <Separator className="my-4" /> {/* Adiciona um separador */}
+            <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+              <h3 className="font-semibold text-lg mb-3 flex items-center">
+                <Tag className="h-5 w-5 mr-2 text-brand" /> Cupom de Desconto
+              </h3>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-3 bg-green-100 text-green-700 rounded-md">
+                  <span className="font-medium">
+                    Cupom: <span className="font-bold">{appliedCoupon.nome}</span> (
+                    {appliedCoupon.tipo === 'percentual' ? `${appliedCoupon.valor}%` : formatCurrency(appliedCoupon.valor)} OFF)
+                  </span>
+                  <button onClick={removeCoupon} className="text-green-700 hover:text-green-900 ml-2">
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Código do cupom"
+                    className="flex-1 p-2 border rounded-md"
+                    value={couponCodeInput}
+                    onChange={(e) => setCouponCodeInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleApplyCoupon();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleApplyCoupon}
+                    className="bg-brand hover:bg-brand-600 text-white px-4 py-2 rounded-md"
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+              )}
+            </div>
+            {/* Fim da Seção de Cupons */}
+
             <div className="border-t pt-4">
-              <div className="flex justify-between text-lg font-bold mb-6">
-                <span>Total</span>
+              <div className="flex justify-between text-lg font-bold mb-2">
+                <span>Subtotal do Pedido</span>
                 <span>{formatCurrency(cartTotal)}</span>
               </div>
-              <Button 
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-lg font-bold text-green-600 mb-2">
+                  <span>Desconto do Cupom</span>
+                  <span>- {formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xl font-bold mb-6 mt-4">
+                <span>Total a Pagar</span>
+                <span>{formatCurrency(finalTotal)}</span>
+              </div>
+              <Button
                 className="w-full text-center py-3 bg-food-green hover:bg-opacity-90"
                 onClick={handleCheckout}
               >
