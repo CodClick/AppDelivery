@@ -255,7 +255,7 @@ export default function AdminCupons() {
                     className="w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="percentual">Porcentagem (%)</option>
-                    <option value="valor_fixo">Valor Fixo (R$)</option>
+                    <option value="fixo">Valor Fixo (R$)</option>
                   </select>
                 </div>
 
