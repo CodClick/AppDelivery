@@ -216,9 +216,10 @@ const App = () => (
             />
             {/* Rota de Cliente (Exemplo: /minha-empresa-slug) */}
             <Route
-              path="/:slug"
-              element={<EmpresaPageWrapper />} {/* <--- Usa o novo Wrapper aqui */}
+            path="/:slug"
+            element={<EmpresaPageWrapper />}
             />
+{/* <--- Usa o novo Wrapper aqui */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
