@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } => React;
 import { supabase } from "@/lib/supabaseClient"; // Importação original do Supabase
 import { useNavigate } from "react-router-dom"; // Importe useNavigate para navegação
 import {
@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner"; // Importação original do toast
+import { Textarea } from "@/components/ui/textarea"; // Importar Textarea para a descrição
 
 // Se você tiver um hook de autenticação (ex: useAuth), descomente a linha abaixo
-// import { useAuth } from "@/hooks/useAuth"; 
+// import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
@@ -25,6 +26,7 @@ export default function AdminCupons() {
     tipo: "percentual",
     valor: "",
     validade: "",
+    descricao: "", // Adicionado campo de descrição
   });
   const [editingCupom, setEditingCupom] = useState<any | null>(null); // Armazena o cupom sendo editado
 
@@ -77,7 +79,7 @@ export default function AdminCupons() {
 
     const { data, error } = await supabase
       .from("cupons")
-      .select("*")
+      .select("*, descricao") // Adicionado 'descricao' na seleção
       .eq("empresa_id", empresaId);
 
     if (error) {
@@ -91,13 +93,13 @@ export default function AdminCupons() {
     if (empresaId) fetchCupons();
   }, [empresaId]); // Busca os cupons novamente quando o empresaId muda
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { // Adicionado HTMLTextAreaElement
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleOpenCreateDialog = () => {
     setEditingCupom(null); // Limpa qualquer estado de edição
-    setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" }); // Reseta o formulário
+    setFormData({ nome: "", tipo: "percentual", valor: "", validade: "", descricao: "" }); // Reseta o formulário e inclui descrição
     setOpen(true);
   };
 
@@ -108,6 +110,7 @@ export default function AdminCupons() {
       tipo: cupom.tipo,
       valor: String(cupom.valor).replace(".", ","), // Converte para string e usa vírgula para o input
       validade: cupom.validade, // Assume que 'validade' já está no formato 'YYYY-MM-DD'
+      descricao: cupom.descricao || "", // Preenche a descrição, ou string vazia se não existir
     });
     setOpen(true);
   };
@@ -137,10 +140,10 @@ export default function AdminCupons() {
   };
 
   const handleSubmit = async () => {
-    const { nome, tipo, valor, validade } = formData;
+    const { nome, tipo, valor, validade, descricao } = formData; // Incluído descricao
 
     if (!nome || !valor || !validade || !empresaId) {
-      toast.error("Preencha todos os campos!");
+      toast.error("Preencha todos os campos obrigatórios!");
       return;
     }
 
@@ -155,6 +158,7 @@ export default function AdminCupons() {
           tipo,
           valor: valorNumber,
           validade,
+          descricao, // Incluído descricao na atualização
         })
         .eq("id", editingCupom.id);
 
@@ -176,6 +180,7 @@ export default function AdminCupons() {
           valor: valorNumber,
           validade,
           empresa_id: empresaId,
+          descricao, // Incluído descricao na criação
         },
       ]);
 
@@ -185,7 +190,7 @@ export default function AdminCupons() {
       } else {
         toast.success("Cupom criado com sucesso!");
         setOpen(false);
-        setFormData({ nome: "", tipo: "percentual", valor: "", validade: "" }); // Reseta o formulário
+        setFormData({ nome: "", tipo: "percentual", valor: "", validade: "", descricao: "" }); // Reseta o formulário e inclui descrição
         fetchCupons(); // Atualiza a lista
       }
     }
@@ -246,6 +251,18 @@ export default function AdminCupons() {
                 </div>
 
                 <div>
+                  <Label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-1">Descrição</Label>
+                  <Textarea // Usando Textarea para a descrição
+                    id="descricao"
+                    name="descricao"
+                    value={formData.descricao}
+                    onChange={handleChange}
+                    placeholder="Descreva o propósito do cupom (ex: Desconto para primeira compra)"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="tipo" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Desconto</Label>
                   <select
                     id="tipo"
@@ -300,6 +317,9 @@ export default function AdminCupons() {
             <div key={cupom.id} className="p-5 border border-gray-200 rounded-lg shadow-sm bg-white flex flex-col justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">{cupom.nome}</h2>
+                {cupom.descricao && ( // Exibe a descrição se ela existir
+                  <p className="text-gray-600 text-sm mb-2 italic">{cupom.descricao}</p>
+                )}
                 <p className="text-gray-700 mb-1">
                   Desconto:{" "}
                   {cupom.tipo === "percentual"
@@ -373,4 +393,5 @@ export default function AdminCupons() {
       </Dialog>
     </div>
   );
-}
+                            }
+                    
