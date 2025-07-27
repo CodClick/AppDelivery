@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient"; // Importação original do Supabase
-import { useNavigate } from "react-router-dom"; // Importe useNavigate para navegação
+import { supabase } from "@/lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -12,39 +12,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner"; // Importação original do toast
-import { Textarea } from "@/components/ui/textarea"; // Importar Textarea para a descrição
-
-// Se você tiver um hook de autenticação (ex: useAuth), descomente a linha abaixo
-// import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch"; // Importe o componente Switch
 
 export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
-  const [open, setOpen] = useState(false); // Controla o diálogo de criar/editar
+  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     tipo: "percentual",
     valor: "",
     validade: "",
-    descricao: "", // Adicionado campo de descrição
+    descricao: "",
+    ativo: true, // Adicionado campo 'ativo' com default true
   });
-  const [editingCupom, setEditingCupom] = useState<any | null>(null); // Armazena o cupom sendo editado
+  const [editingCupom, setEditingCupom] = useState<any | null>(null);
 
   const [empresaId, setEmpresaId] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Controla o diálogo de confirmação de exclusão
-  const [cupomToDelete, setCupomToDelete] = useState<any | null>(null); // Armazena o cupom a ser excluído
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [cupomToDelete, setCupomToDelete] = useState<any | null>(null);
 
-  const navigate = useNavigate(); // Usa o useNavigate real
-  // Se você tiver um hook de autenticação, obtenha logOut dele:
-  // const { logOut } = useAuth();
-  // Caso contrário, você pode definir uma função logOut simples aqui:
+  const navigate = useNavigate();
   const logOut = async () => {
     await supabase.auth.signOut();
-    navigate("/"); // Redireciona para a página inicial após o logout
+    navigate("/");
   };
 
-
-  // 🔐 Buscar o ID da empresa do admin logado
   useEffect(() => {
     const fetchEmpresaId = async () => {
       const {
@@ -75,11 +69,11 @@ export default function AdminCupons() {
   }, []);
 
   const fetchCupons = async () => {
-    if (!empresaId) return; // Garante que o empresaId esteja disponível antes de buscar
+    if (!empresaId) return;
 
     const { data, error } = await supabase
       .from("cupons")
-      .select("*, descricao") // Adicionado 'descricao' na seleção
+      .select("*, descricao, ativo") // Adicionado 'ativo' na seleção
       .eq("empresa_id", empresaId);
 
     if (error) {
@@ -91,15 +85,27 @@ export default function AdminCupons() {
 
   useEffect(() => {
     if (empresaId) fetchCupons();
-  }, [empresaId]); // Busca os cupons novamente quando o empresaId muda
+  }, [empresaId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { // Adicionado HTMLTextAreaElement
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Nova função para lidar com a mudança do switch 'ativo'
+  const handleSwitchChange = (checked: boolean) => {
+    setFormData({ ...formData, ativo: checked });
+  };
+
   const handleOpenCreateDialog = () => {
-    setEditingCupom(null); // Limpa qualquer estado de edição
-    setFormData({ nome: "", tipo: "percentual", valor: "", validade: "", descricao: "" }); // Reseta o formulário e inclui descrição
+    setEditingCupom(null);
+    setFormData({
+      nome: "",
+      tipo: "percentual",
+      valor: "",
+      validade: "",
+      descricao: "",
+      ativo: true, // Novo cupom é ativo por padrão
+    });
     setOpen(true);
   };
 
@@ -108,9 +114,10 @@ export default function AdminCupons() {
     setFormData({
       nome: cupom.nome,
       tipo: cupom.tipo,
-      valor: String(cupom.valor).replace(".", ","), // Converte para string e usa vírgula para o input
-      validade: cupom.validade, // Assume que 'validade' já está no formato 'YYYY-MM-DD'
-      descricao: cupom.descricao || "", // Preenche a descrição, ou string vazia se não existir
+      valor: String(cupom.valor).replace(".", ","),
+      validade: cupom.validade,
+      descricao: cupom.descricao || "",
+      ativo: cupom.ativo, // Preenche o estado do switch
     });
     setOpen(true);
   };
@@ -133,14 +140,32 @@ export default function AdminCupons() {
       toast.error("Erro ao excluir cupom!");
     } else {
       toast.success("Cupom excluído com sucesso!");
-      fetchCupons(); // Atualiza a lista
+      fetchCupons();
     }
     setShowDeleteConfirm(false);
     setCupomToDelete(null);
   };
 
+  // Nova função para alternar o status ativo/desativado diretamente do card
+  const toggleCupomAtivo = async (cupomId: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    const { error } = await supabase
+      .from("cupons")
+      .update({ ativo: newStatus })
+      .eq("id", cupomId);
+
+    if (error) {
+      console.error("Erro ao alternar status do cupom:", error.message);
+      toast.error("Erro ao alternar status do cupom!");
+    } else {
+      toast.success(`Cupom ${newStatus ? "ativado" : "desativado"} com sucesso!`);
+      fetchCupons(); // Rebusca os cupons para atualizar a UI
+    }
+  };
+
+
   const handleSubmit = async () => {
-    const { nome, tipo, valor, validade, descricao } = formData; // Incluído descricao
+    const { nome, tipo, valor, validade, descricao, ativo } = formData;
 
     if (!nome || !valor || !validade || !empresaId) {
       toast.error("Preencha todos os campos obrigatórios!");
@@ -150,7 +175,6 @@ export default function AdminCupons() {
     const valorNumber = parseFloat(valor.replace(",", "."));
 
     if (editingCupom) {
-      // Atualiza o cupom existente
       const { error } = await supabase
         .from("cupons")
         .update({
@@ -158,7 +182,8 @@ export default function AdminCupons() {
           tipo,
           valor: valorNumber,
           validade,
-          descricao, // Incluído descricao na atualização
+          descricao,
+          ativo, // Incluído ativo na atualização
         })
         .eq("id", editingCupom.id);
 
@@ -168,11 +193,10 @@ export default function AdminCupons() {
       } else {
         toast.success("Cupom atualizado com sucesso!");
         setOpen(false);
-        setEditingCupom(null); // Limpa o estado de edição
-        fetchCupons(); // Atualiza a lista
+        setEditingCupom(null);
+        fetchCupons();
       }
     } else {
-      // Cria um novo cupom
       const { error } = await supabase.from("cupons").insert([
         {
           nome,
@@ -180,7 +204,8 @@ export default function AdminCupons() {
           valor: valorNumber,
           validade,
           empresa_id: empresaId,
-          descricao, // Incluído descricao na criação
+          descricao,
+          ativo, // Incluído ativo na criação
         },
       ]);
 
@@ -190,8 +215,8 @@ export default function AdminCupons() {
       } else {
         toast.success("Cupom criado com sucesso!");
         setOpen(false);
-        setFormData({ nome: "", tipo: "percentual", valor: "", validade: "", descricao: "" }); // Reseta o formulário e inclui descrição
-        fetchCupons(); // Atualiza a lista
+        setFormData({ nome: "", tipo: "percentual", valor: "", validade: "", descricao: "", ativo: true });
+        fetchCupons();
       }
     }
   };
@@ -200,22 +225,20 @@ export default function AdminCupons() {
     <div className="p-6 max-w-4xl mx-auto font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Cupons de Desconto</h1>
-        <div className="flex gap-2 items-center"> {/* Container para os botões de navegação e criar */}
+        <div className="flex gap-2 items-center">
           <Button
             onClick={() => navigate("/admin-dashboard")}
             className="bg-[#fa6500] hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center gap-2"
           >
-            {/* ArrowLeft Icon (SVG) */}
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
               <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
             </svg>
             Dashboard
           </Button>
           <Button
-            onClick={logOut} // Usa a função de logout
+            onClick={logOut}
             className="bg-[#b40000] hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center gap-2"
           >
-            {/* LogOut Icon (SVG) */}
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" x2="10" y1="12" y2="12"/>
             </svg>
@@ -252,7 +275,7 @@ export default function AdminCupons() {
 
                 <div>
                   <Label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-1">Descrição</Label>
-                  <Textarea // Usando Textarea para a descrição
+                  <Textarea
                     id="descricao"
                     name="descricao"
                     value={formData.descricao}
@@ -300,6 +323,16 @@ export default function AdminCupons() {
                   />
                 </div>
 
+                {/* Campo de Ativo/Desativado no formulário */}
+                <div className="flex items-center space-x-2 mt-4">
+                  <Switch
+                    id="ativo"
+                    checked={formData.ativo}
+                    onCheckedChange={handleSwitchChange}
+                  />
+                  <Label htmlFor="ativo" className="text-sm font-medium text-gray-700">Cupom Ativo</Label>
+                </div>
+
                 <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out">
                   {editingCupom ? "Atualizar Cupom" : "Salvar Cupom"}
                 </Button>
@@ -317,7 +350,7 @@ export default function AdminCupons() {
             <div key={cupom.id} className="p-5 border border-gray-200 rounded-lg shadow-sm bg-white flex flex-col justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">{cupom.nome}</h2>
-                {cupom.descricao && ( // Exibe a descrição se ela existir
+                {cupom.descricao && (
                   <p className="text-gray-600 text-sm mb-2 italic">{cupom.descricao}</p>
                 )}
                 <p className="text-gray-700 mb-1">
@@ -328,43 +361,52 @@ export default function AdminCupons() {
                 </p>
                 <p className="text-gray-700 text-sm">Válido até: {new Date(cupom.validade).toLocaleDateString("pt-BR")}</p>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEditClick(cupom)}
-                  className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition duration-200"
-                  title="Editar Cupom"
-                >
-                  {/* Pencil Icon (SVG) */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil">
-                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                    <path d="m15 5 4 4"/>
-                  </svg>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteClick(cupom)}
-                  className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition duration-200"
-                  title="Excluir Cupom"
-                >
-                  {/* Trash Icon (SVG) */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2">
-                    <path d="M3 6h18"/>
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                    <line x1="10" x2="10" y1="11" y2="17"/>
-                    <line x1="14" x2="14" y1="11" y2="17"/>
-                  </svg>
-                </Button>
+              <div className="flex justify-between items-center mt-4"> {/* Ajuste aqui para alinhar switch e botões */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id={`ativo-${cupom.id}`} // ID único para cada switch
+                    checked={cupom.ativo}
+                    onCheckedChange={() => toggleCupomAtivo(cupom.id, cupom.ativo)}
+                  />
+                  <Label htmlFor={`ativo-${cupom.id}`} className="text-sm font-medium text-gray-700">
+                    {cupom.ativo ? "Ativo" : "Inativo"}
+                  </Label>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEditClick(cupom)}
+                    className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition duration-200"
+                    title="Editar Cupom"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil">
+                      <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                      <path d="m15 5 4 4"/>
+                    </svg>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteClick(cupom)}
+                    className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition duration-200"
+                    title="Excluir Cupom"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2">
+                      <path d="M3 6h18"/>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                      <line x1="10" x2="10" y1="11" y2="17"/>
+                      <line x1="14" x2="14" y1="11" y2="17"/>
+                    </svg>
+                  </Button>
+                </div>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="bg-white p-6 rounded-lg shadow-xl">
           <DialogHeader>
@@ -393,5 +435,5 @@ export default function AdminCupons() {
       </Dialog>
     </div>
   );
-                            }
-                    
+            }
+                  
