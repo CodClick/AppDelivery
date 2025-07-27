@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Order } from "@/types/order"; // Seu tipo Order atualizado
+import { Order } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -86,7 +86,7 @@ const Entregador = () => {
 
   const translatePaymentMethod = (method: Order["paymentMethod"]) => {
     switch (method) {
-      case "card": return "Cartão (Crédito/Débito)"; // Ajustado para "card"
+      case "card": return "Cartão (Crédito/Débito)";
       case "cash": return "Dinheiro";
       case "pix": return "PIX";
       case "payroll_discount": return "Desconto em Folha";
@@ -142,7 +142,7 @@ const Entregador = () => {
                 </div>
               </CardHeader>
               <CardContent className="py-4 space-y-2">
-                {/* Endereço completo do cliente - AGORA USANDO order.address DIRETAMENTE */}
+                {/* Endereço completo do cliente */}
                 <div>
                   <p className="font-semibold text-sm">Endereço de Entrega:</p>
                   <p className="text-sm text-gray-700">{order.address || "Endereço não disponível"}</p>
@@ -151,32 +151,29 @@ const Entregador = () => {
                 {/* Pedido completo do cliente */}
                 <div>
                   <p className="font-semibold text-sm">Itens do Pedido:</p>
-                  <ul className="list-disc list-inside text-sm text-gray-700">
+                  <ul className="list-disc list-inside text-sm text-gray-700"> {/* Fonte padrão para lista de itens */}
                     {order.items.map((item, index) => (
-                      <li key={item.menuItemId + "-" + index}> {/* Usando menuItemId e index para chave */}
-                        {item.quantity}x {item.name} - R$ {(item.price * item.quantity).toFixed(2)}
-                        {/* Exibir variações, se existirem */}
+                      <React.Fragment key={item.menuItemId + "-" + index}> {/* Fragment para renderizar múltiplos elementos no map */}
+                        <li>
+                          {item.quantity}x {item.name}
+                          {item.notes && <span className="text-gray-500 italic"> ({item.notes})</span>}
+                          {item.priceFrom && <span className="text-gray-500 italic"> (Preço a consultar)</span>}
+                        </li>
+                        {/* Exibir variações, se existirem - SEM NOME DO GRUPO E COM MESMO TAMANHO DE FONTE */}
                         {item.selectedVariations && item.selectedVariations.length > 0 && (
-                          <ul className="list-disc list-inside ml-4 text-xs text-gray-600">
+                          <ul className="list-disc list-inside ml-4 text-sm text-gray-700"> {/* Mesma fonte dos itens principais */}
                             {item.selectedVariations.map((group, groupIdx) => (
-                              <li key={group.groupId + "-" + groupIdx}>
-                                **{group.groupName}**:
-                                <ul className="list-disc list-inside ml-4 text-xs text-gray-600">
-                                  {group.variations.map((variation, varIdx) => (
-                                    <li key={variation.variationId + "-" + varIdx}>
-                                      {variation.quantity}x {variation.name}
-                                      {variation.additionalPrice && variation.additionalPrice > 0 &&
-                                        ` (R$ ${variation.additionalPrice.toFixed(2)})`
-                                      }
-                                    </li>
-                                  ))}
-                                </ul>
-                              </li>
+                              <React.Fragment key={group.groupId + "-" + groupIdx}>
+                                {group.variations.map((variation, varIdx) => (
+                                  <li key={variation.variationId + "-" + varIdx}>
+                                    {variation.quantity}x {variation.name}
+                                  </li>
+                                ))}
+                              </React.Fragment>
                             ))}
                           </ul>
                         )}
-                        {item.priceFrom && <span className="text-gray-500 italic"> (Preço a consultar)</span>}
-                      </li>
+                      </React.Fragment>
                     ))}
                   </ul>
                 </div>
@@ -209,4 +206,4 @@ const Entregador = () => {
 };
 
 export default Entregador;
-                                        
+                
