@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Order } from "@/types/order";
+import { Order } from "@/types/order"; // Assumindo que Order inclui deliveryAddress e detalhes dos itens
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -39,6 +39,10 @@ const Entregador = () => {
       const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        // Certifique-se de que `createdAt` e outros campos de data/timestamp
+        // sejam convertidos para Date se você os usar diretamente
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        // Inclua outros campos que precisam de conversão, se houver
       })) as Order[];
       setOrders(fetchedOrders);
       setLoading(false);
@@ -57,6 +61,7 @@ const Entregador = () => {
         title: "Status atualizado",
         description: `Pedido #${order.id.substring(0, 6)} marcado como ${translateStatus(novoStatus)}`,
       });
+      // Remove o pedido da lista após a atualização bem-sucedida
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
     } catch (err) {
       console.error(err);
@@ -84,6 +89,16 @@ const Entregador = () => {
     return statusMap[status] || status;
   };
 
+  const translatePaymentMethod = (method: Order["paymentMethod"]) => {
+    switch (method) {
+      case "credit_card": return "Cartão de Crédito";
+      case "debit_card": return "Cartão de Débito";
+      case "cash": return "Dinheiro";
+      case "pix": return "PIX";
+      default: return method;
+    }
+  };
+
   const formatFullDate = (input: string | Date | Timestamp) => {
     let date: Date;
 
@@ -106,6 +121,17 @@ const Entregador = () => {
     }).format(date);
   };
 
+  // Função para formatar o endereço
+  const formatAddress = (address: Order['deliveryAddress']) => {
+    if (!address) return "Endereço não disponível";
+    const { street, number, neighborhood, city, state, zipCode, complement } = address;
+    let fullAddress = `${street}, ${number}`;
+    if (complement) fullAddress += ` - ${complement}`;
+    fullAddress += `, ${neighborhood}, ${city}/${state}`;
+    if (zipCode) fullAddress += ` - CEP: ${zipCode}`;
+    return fullAddress;
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Pedidos em rota de entrega</h1>
@@ -121,16 +147,54 @@ const Entregador = () => {
               <CardHeader className="bg-gray-50 py-4">
                 <div>
                   <p className="text-sm text-gray-500">Pedido #{order.id.substring(0, 6)} - {formatFullDate(order.createdAt)}</p>
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-base font-medium text-gray-700">
                     Cliente: {order.customerName}
                   </p>
-                  <p className="text-sm text-gray-500">Fone: {order.customerPhone}</p>
+                  {/* Número de WhatsApp do cliente */}
+                  <p className="text-sm text-gray-500">
+                    Fone: <a href={`https://wa.me/${order.customerPhone}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {order.customerPhone}
+                    </a>
+                  </p>
                 </div>
               </CardHeader>
               <CardContent className="py-4 space-y-2">
-                <p className="text-sm font-medium">Itens: {order.items.length}</p>
-                <p className="font-medium">Total: R$ {order.total.toFixed(2)}</p>
-                <Button onClick={() => handleConfirmEntrega(order)} className="w-full mt-2">
+                {/* Endereço completo do cliente */}
+                <div>
+                  <p className="font-semibold text-sm">Endereço de Entrega:</p>
+                  <p className="text-sm text-gray-700">{formatAddress(order.deliveryAddress)}</p>
+                </div>
+
+                {/* Pedido completo do cliente */}
+                <div>
+                  <p className="font-semibold text-sm">Itens do Pedido:</p>
+                  <ul className="list-disc list-inside text-sm text-gray-700">
+                    {order.items.map((item, index) => (
+                      <li key={index}>
+                        {item.quantity}x {item.name} - R$ {(item.price * item.quantity).toFixed(2)}
+                        {item.notes && <span className="text-gray-500 italic"> ({item.notes})</span>}
+                        {/* Se tiver adicionais ou modificações, você pode mapeá-los aqui */}
+                        {item.addons && item.addons.length > 0 && (
+                          <ul className="list-disc list-inside ml-4 text-xs text-gray-600">
+                            {item.addons.map((addon, idx) => (
+                              <li key={idx}>+ {addon.name} (R$ {addon.price.toFixed(2)})</li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Forma de pagamento */}
+                <div>
+                  <p className="font-semibold text-sm">Forma de Pagamento:</p>
+                  <p className="text-sm text-gray-700">{translatePaymentMethod(order.paymentMethod)}</p>
+                </div>
+
+                <p className="font-medium text-lg text-right">Total: R$ {order.total.toFixed(2)}</p>
+
+                <Button onClick={() => handleConfirmEntrega(order)} className="w-full mt-4">
                   Confirmar entrega
                 </Button>
               </CardContent>
@@ -143,3 +207,4 @@ const Entregador = () => {
 };
 
 export default Entregador;
+                  
