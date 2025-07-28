@@ -49,6 +49,9 @@ const Entregador = () => {
   }, []);
 
   const handleConfirmEntrega = async (order: Order) => {
+    // A lógica para definir o novoStatus permanece a mesma:
+    // Se o método de pagamento for "cash" (dinheiro), o status final é "received" (recebido pelo entregador).
+    // Caso contrário (cartão, pix, desconto), o status final é "delivered" (entrega finalizada, sem coleta de valor).
     const novoStatus = order.paymentMethod === "cash" ? "received" : "delivered";
 
     try {
@@ -91,6 +94,14 @@ const Entregador = () => {
       case "pix": return "PIX";
       case "payroll_discount": return "Desconto em Folha";
       default: return method;
+    }
+  };
+
+  const translatePaymentStatus = (status?: Order["paymentStatus"]) => {
+    switch (status) {
+      case "a_receber": return "A Receber (Pagamento no local)";
+      case "recebido": return "Recebido (Pagamento já efetuado)";
+      default: return "Status de Pagamento Indefinido"; // Caso o campo não esteja presente ou tenha outro valor
     }
   };
 
@@ -151,17 +162,16 @@ const Entregador = () => {
                 {/* Pedido completo do cliente */}
                 <div>
                   <p className="font-semibold text-sm">Itens do Pedido:</p>
-                  <ul className="list-disc list-inside text-sm text-gray-700"> {/* Fonte padrão para lista de itens */}
+                  <ul className="list-disc list-inside text-sm text-gray-700">
                     {order.items.map((item, index) => (
-                      <React.Fragment key={item.menuItemId + "-" + index}> {/* Fragment para renderizar múltiplos elementos no map */}
+                      <React.Fragment key={item.menuItemId + "-" + index}>
                         <li>
                           {item.quantity}x {item.name}
                           {item.notes && <span className="text-gray-500 italic"> ({item.notes})</span>}
                           {item.priceFrom && <span className="text-gray-500 italic"> (Preço a consultar)</span>}
                         </li>
-                        {/* Exibir variações, se existirem - SEM NOME DO GRUPO E COM MESMO TAMANHO DE FONTE */}
                         {item.selectedVariations && item.selectedVariations.length > 0 && (
-                          <ul className="list-disc list-inside ml-4 text-sm text-gray-700"> {/* Mesma fonte dos itens principais */}
+                          <ul className="list-disc list-inside ml-4 text-sm text-gray-700">
                             {item.selectedVariations.map((group, groupIdx) => (
                               <React.Fragment key={group.groupId + "-" + groupIdx}>
                                 {group.variations.map((variation, varIdx) => (
@@ -182,6 +192,14 @@ const Entregador = () => {
                 <div>
                   <p className="font-semibold text-sm">Forma de Pagamento:</p>
                   <p className="text-sm text-gray-700">{translatePaymentMethod(order.paymentMethod)}</p>
+                </div>
+
+                {/* Status de Pagamento - NOVO CAMPO */}
+                <div>
+                  <p className="font-semibold text-sm">Status de Pagamento:</p>
+                  <p className="text-sm text-gray-700">
+                    {translatePaymentStatus(order.paymentStatus)}
+                  </p>
                 </div>
 
                 {order.observations && (
@@ -206,4 +224,3 @@ const Entregador = () => {
 };
 
 export default Entregador;
-                
