@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth"; // Importa useAuth do seu AuthContext
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -29,8 +29,9 @@ import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
 const queryClient = new QueryClient();
 
+// Componente PrivateRoute com verificação de role ativada
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, userRole, loading } = useAuth(); // Pega userRole do useAuth
 
   if (loading) {
     return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
@@ -42,16 +43,17 @@ const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: st
   }
 
   // --- Adição para depuração ---
-  console.log(`PrivateRoute: currentUser.role = '${currentUser.role}' | role esperado = '${role}'`);
+  console.log(`PrivateRoute: userRole = '${userRole}' | role esperado = '${role}'`);
   // --- Fim da adição ---
 
-  // Lógica para verificar o role: Se um role for especificado E o role do usuário não for o role especificado, redireciona.
-  if (role && currentUser.role !== role) {
-    console.log(`PrivateRoute: Acesso negado. currentUser.role '${currentUser.role}' != role esperado '${role}'. Redirecionando para /unauthorized`);
+  // Lógica para verificar o role:
+  // Se um 'role' for especificado na rota E o 'userRole' do usuário não for o 'role' especificado, redireciona.
+  if (role && userRole !== role) { // Usa 'userRole' agora!
+    console.log(`PrivateRoute: Acesso negado. userRole '${userRole}' != role esperado '${role}'. Redirecionando para /unauthorized`);
     return <Navigate to="/unauthorized" />;
   }
 
-  console.log(`PrivateRoute: Acesso permitido para role '${currentUser.role}' na rota com role '${role || "qualquer logado"}'`);
+  console.log(`PrivateRoute: Acesso permitido para userRole '${userRole}' na rota com role '${role || "qualquer logado"}'`);
   return <>{children}</>;
 };
 
@@ -87,7 +89,7 @@ const App = () => (
               <Route
                 path="/admin-coupons"
                 element={
-                  <PrivateRoute role="admin">
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                        <AdminCupons />
                     </AppLayout>
@@ -97,7 +99,7 @@ const App = () => (
               <Route
                 path="/admin-dashboard"
                 element={
-                  <PrivateRoute role="admin">
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                       <AdminDashboard />
                     </AppLayout>
@@ -107,7 +109,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <PrivateRoute role="admin">
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                       <Admin />
                     </AppLayout>
@@ -117,7 +119,7 @@ const App = () => (
               <Route
                 path="/orders"
                 element={
-                  <PrivateRoute> {/* Esta rota aceita qualquer usuário logado */}
+                  <PrivateRoute> {/* Esta rota aceita qualquer usuário logado (sem role específico) */}
                     <AppLayout>
                       <Orders />
                     </AppLayout>
@@ -127,7 +129,7 @@ const App = () => (
               <Route
                 path="/admin-orders"
                 element={
-                  <PrivateRoute role="admin">
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                       <AdminOrders />
                     </AppLayout>
@@ -137,7 +139,7 @@ const App = () => (
               <Route
                 path="/entregador"
                 element={
-                  <PrivateRoute role="entregador">
+                  <PrivateRoute role="entregador"> {/* Apenas entregador */}
                     <AppLayout>
                       <Entregador />
                     </AppLayout>
@@ -147,7 +149,7 @@ const App = () => (
               <Route
                 path="/pdv"
                 element={
-                  <PrivateRoute role="admin">
+                  <PrivateRoute role="admin"> {/* Apenas admin (geralmente PDV é de admin/gerente) */}
                     <AppLayout>
                       <PDV />
                     </AppLayout>
@@ -157,7 +159,7 @@ const App = () => (
               <Route
                 path="/api/*"
                 element={
-                  <PrivateRoute role="admin">
+                  <PrivateRoute role="admin"> {/* Se API for para uso interno de admin */}
                     <AppLayout>
                       <Api />
                     </AppLayout>
