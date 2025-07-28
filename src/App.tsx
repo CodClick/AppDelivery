@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useAuth } from "@/hooks/useAuth"; // Importa useAuth do seu AuthContext
+import { useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -29,40 +29,36 @@ import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
 const queryClient = new QueryClient();
 
-// Componente PrivateRoute com verificação de role ativada
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
-  const { currentUser, userRole, loading } = useAuth(); // Pega 'loading' e 'userRole' do contexto
+  const { currentUser, loading } = useAuth();
 
-  // 1. Mostrar tela de carregamento ENQUANTO QUALQUER DADO DO AUTH ESTIVER CARREGANDO
   if (loading) {
-    console.log("PrivateRoute: AuthContext ainda está carregando...");
     return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
   }
 
-  // 2. Se o loading acabou e não há currentUser, redireciona para login
   if (!currentUser) {
     console.log("PrivateRoute: Usuário não autenticado, redirecionando para /login");
     return <Navigate to="/login" />;
   }
 
-  // 3. Se o loading acabou e há currentUser, verifica o role
-  console.log(`PrivateRoute: userRole = '${userRole}' | role esperado = '${role}'`);
-  if (role && userRole !== role) {
-    console.log(`PrivateRoute: Acesso negado. userRole '${userRole}' != role esperado '${role}'. Redirecionando para /unauthorized`);
+  // --- MODIFICAÇÃO AQUI ---
+  // Se o usuário logado for 'admin', ele tem acesso a qualquer página privada,
+  // independentemente do 'role' específico que a rota pede.
+  if (currentUser.role === "admin") {
+    console.log(`PrivateRoute: Usuário é admin. Acesso permitido a todas as páginas.`);
+    return <>{children}</>;
+  }
+  // --- FIM DA MODIFICAÇÃO ---
+
+  console.log(`PrivateRoute: currentUser.role = '${currentUser.role}' | role esperado = '${role}'`);
+
+  // Lógica de verificação para outros roles (entregador, etc.)
+  if (role && currentUser.role !== role) {
+    console.log(`PrivateRoute: Acesso negado. currentUser.role '${currentUser.role}' != role esperado '${role}'. Redirecionando para /unauthorized`);
     return <Navigate to="/unauthorized" />;
   }
 
-  console.log(`PrivateRoute: Acesso permitido para userRole '${userRole}' na rota com role '${role || "qualquer logado"}'`);
-  return <>{children}</>;
-
-  // Lógica para verificar o role:
-  // Se um 'role' for especificado na rota E o 'userRole' do usuário não for o 'role' especificado, redireciona.
-  if (role && userRole !== role) { // Usa 'userRole' agora!
-    console.log(`PrivateRoute: Acesso negado. userRole '${userRole}' != role esperado '${role}'. Redirecionando para /unauthorized`);
-    return <Navigate to="/unauthorized" />;
-  }
-
-  console.log(`PrivateRoute: Acesso permitido para userRole '${userRole}' na rota com role '${role || "qualquer logado"}'`);
+  console.log(`PrivateRoute: Acesso permitido para role '${currentUser.role}' na rota com role '${role || "qualquer logado"}'`);
   return <>{children}</>;
 };
 
@@ -98,7 +94,7 @@ const App = () => (
               <Route
                 path="/admin-coupons"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                        <AdminCupons />
                     </AppLayout>
@@ -108,7 +104,7 @@ const App = () => (
               <Route
                 path="/admin-dashboard"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <AdminDashboard />
                     </AppLayout>
@@ -118,7 +114,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <Admin />
                     </AppLayout>
@@ -128,7 +124,7 @@ const App = () => (
               <Route
                 path="/orders"
                 element={
-                  <PrivateRoute> {/* Esta rota aceita qualquer usuário logado (sem role específico) */}
+                  <PrivateRoute> {/* Esta rota aceita qualquer usuário logado */}
                     <AppLayout>
                       <Orders />
                     </AppLayout>
@@ -138,7 +134,7 @@ const App = () => (
               <Route
                 path="/admin-orders"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <AdminOrders />
                     </AppLayout>
@@ -148,7 +144,7 @@ const App = () => (
               <Route
                 path="/entregador"
                 element={
-                  <PrivateRoute role="entregador"> {/* Apenas entregador */}
+                  <PrivateRoute role="entregador">
                     <AppLayout>
                       <Entregador />
                     </AppLayout>
@@ -158,7 +154,7 @@ const App = () => (
               <Route
                 path="/pdv"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin (geralmente PDV é de admin/gerente) */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <PDV />
                     </AppLayout>
@@ -168,7 +164,7 @@ const App = () => (
               <Route
                 path="/api/*"
                 element={
-                  <PrivateRoute role="admin"> {/* Se API for para uso interno de admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <Api />
                     </AppLayout>
