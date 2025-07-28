@@ -2,9 +2,12 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast"; // Assumindo que você usará o mesmo sistema de toast
+import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail } from "lucide-react"; // Ícone de e-mail
+import { Mail } from "lucide-react";
+
+// 🚀 IMPORTAÇÃO DO SEU CLIENTE SUPABASE REAL AQUI!
+import { supabase } from "@/lib/supabaseClient"; // Ajuste o caminho se for diferente
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -15,27 +18,32 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Simulação de uma chamada de API para enviar o e-mail de recuperação
-    // No seu ambiente real, você faria uma requisição para o seu backend aqui.
+
     try {
       setError("");
       setSuccessMessage("");
       setLoading(true);
 
-      // Exemplo de simulação:
-      // await yourApi.sendPasswordResetEmail(email); 
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simula delay da API
+      // 🚀 CHAMADA REAL PARA O SUPABASE PARA SOLICITAR A RECUPERAÇÃO DE SENHA
+      // Usamos a função `resetPasswordForEmail` do Supabase Auth.
+      const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`, // Importante! Redireciona para a sua página de redefinição
+      });
 
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      // Mensagem de sucesso segura: não revela se o e-mail existe
       setSuccessMessage("Se as informações estiverem corretas, você receberá um e-mail com as instruções para redefinir sua senha. Verifique sua caixa de entrada e também a pasta de spam!");
       toast({
         title: "E-mail enviado!",
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
       });
 
-    } catch (err) {
-      // Aqui você pode personalizar a mensagem de erro. 
-      // Por segurança, evitamos dizer se o e-mail existe ou não.
+    } catch (err: any) {
+      console.error("Erro ao solicitar recuperação de senha:", err);
+      // Mensagem de erro genérica por segurança
       setError("Não foi possível processar sua solicitação no momento. Tente novamente mais tarde.");
       toast({
         title: "Erro",
@@ -56,7 +64,7 @@ const ForgotPassword = () => {
             Não se preocupe! Informe seu e-mail abaixo e nós te ajudaremos a recuperá-la.
           </p>
         </div>
-        
+
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -64,11 +72,11 @@ const ForgotPassword = () => {
         )}
 
         {successMessage && (
-          <Alert variant="success" className="bg-green-50 border-green-200 text-green-700"> {/* Exemplo de cor verde para sucesso, ajuste conforme seu tema */}
+          <Alert variant="success" className="bg-green-50 border-green-200 text-green-700">
             <AlertDescription>{successMessage}</AlertDescription>
           </Alert>
         )}
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
@@ -91,7 +99,7 @@ const ForgotPassword = () => {
               </div>
             </div>
           </div>
-          
+
           <Button
             type="submit"
             className="w-full bg-brand hover:bg-brand-600"
