@@ -13,10 +13,18 @@ import { useNavigate } from "react-router-dom";
 import { fetchAddressByCep } from "@/services/cepService";
 
 const Checkout = () => {
-  const { cartItems, cartTotal, clearCart } = useCart();
+  const {
+    cartItems,
+    cartTotal, // Este é o total bruto, sem desconto
+    finalTotal, // <--- NOVO: O total com desconto
+    discountAmount, // <--- NOVO: O valor do desconto
+    appliedCoupon, // <--- NOVO: O cupom aplicado
+    clearCart,
+  } = useCart();
+
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [cep, setCep] = useState("");
@@ -33,7 +41,7 @@ const Checkout = () => {
 
   const handleCepChange = async (value: string) => {
     setCep(value);
-    
+
     if (value.replace(/\D/g, '').length === 8) {
       setCepLoading(true);
       try {
@@ -63,7 +71,7 @@ const Checkout = () => {
 
     try {
       const fullAddress = `${street}, ${number}${complement ? `, ${complement}` : ""} - ${neighborhood}, ${city} - ${state}`;
-      
+
       console.log("=== CHECKOUT SUBMIT ===");
       console.log("Itens do carrinho:", cartItems);
       cartItems.forEach((item, index) => {
@@ -91,20 +99,26 @@ const Checkout = () => {
           quantity: item.quantity,
           selectedVariations: item.selectedVariations || [],
           priceFrom: item.priceFrom || false
-        }))
+        })),
+        // --- NOVO: Adicionar informações do cupom e do total final ---
+        totalAmount: finalTotal, // <--- Passa o total FINAL para a ordem
+        discountAmount: discountAmount,
+        couponCode: appliedCoupon ? appliedCoupon.nome : null,
+        couponType: appliedCoupon ? appliedCoupon.tipo : null,
+        couponValue: appliedCoupon ? appliedCoupon.valor : null,
       };
 
       console.log("[CHECKOUT] Dados do pedido sendo enviados:", JSON.stringify(orderData, null, 2));
 
       const order = await createOrder(orderData);
-      
+
       clearCart();
-      
+
       toast({
         title: "Pedido realizado com sucesso!",
         description: `Seu pedido #${order.id.substring(0, 6)} foi enviado para o restaurante.`,
       });
-      
+
       navigate("/");
     } catch (error) {
       console.error("Erro ao criar pedido:", error);
@@ -136,7 +150,7 @@ const Checkout = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Finalizar Pedido</h1>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
@@ -153,7 +167,7 @@ const Checkout = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="customerPhone">Telefone/WhatsApp</Label>
                 <Input
@@ -168,7 +182,7 @@ const Checkout = () => {
               <Separator />
 
               <h3 className="text-lg font-semibold">Endereço de Entrega</h3>
-              
+
               <div>
                 <Label htmlFor="cep">CEP</Label>
                 <Input
@@ -261,7 +275,7 @@ const Checkout = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Processando..." : `Finalizar Pedido - R$ ${cartTotal.toFixed(2)}`}
+                {isLoading ? "Processando..." : `Finalizar Pedido - R$ ${finalTotal.toFixed(2)}`} {/* <--- Usa finalTotal aqui */}
               </Button>
             </form>
           </CardContent>
@@ -293,7 +307,6 @@ const Checkout = () => {
                     </div>
                     <div className="text-right font-semibold text-lg">
                       R$ {(
-                        // Se o item tem "a partir de", o preço base é 0
                         ((item.priceFrom ? 0 : item.price) +
                           (item.selectedVariations
                             ? item.selectedVariations.reduce((acc, group) => {
@@ -313,7 +326,6 @@ const Checkout = () => {
                     </div>
                   </div>
 
-                  {/* Exibir grupos de variações e suas quantidades/subtotais */}
                   {item.selectedVariations && item.selectedVariations.length > 0 && (
                     <div className="mt-2 ml-1 text-sm">
                       {item.selectedVariations.map((group, groupIndex) => (
@@ -321,13 +333,11 @@ const Checkout = () => {
                           <div className="font-semibold text-gray-700">{group.groupName}:</div>
                           <div className="ml-2 text-gray-700 flex flex-col gap-0.5">
                             {group.variations.map((variation, varIndex) => {
-                              // Subtotal de cada variação multiplicado pela quantidade selecionada
                               const variationTotal =
                                 (variation.additionalPrice || 0) *
                                 (variation.quantity || 1) *
                                 item.quantity;
 
-                              // Mostrar quantidade sempre, mesmo se for 1
                               if (variation.quantity > 0) {
                                 return (
                                   <div key={varIndex} className="flex items-center justify-between">
@@ -343,7 +353,6 @@ const Checkout = () => {
                                         </>
                                       ) : null}
                                     </span>
-                                    {/* Mostrar subtotal apenas se houver preço */}
                                     {variation.additionalPrice && variation.additionalPrice > 0 && (
                                       <span className="text-green-600 font-semibold tabular-nums">
                                         +R$ {(variationTotal).toFixed(2)}
@@ -361,13 +370,28 @@ const Checkout = () => {
                   )}
                 </div>
               ))}
-              
+
               <Separator />
-              
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total</span>
+
+              {/* --- NOVO: Seção de Resumo de Totais --- */}
+              <div className="flex justify-between font-normal text-lg">
+                <span>Subtotal do Pedido:</span>
                 <span>R$ {cartTotal.toFixed(2)}</span>
               </div>
+
+              {discountAmount > 0 && (
+                <div className="flex justify-between font-normal text-green-600 text-lg">
+                  <span>Desconto do Cupom ({appliedCoupon?.nome}):</span>
+                  <span>- R$ {discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between font-bold text-xl border-t pt-2">
+                <span>Total a Pagar:</span>
+                <span>R$ {finalTotal.toFixed(2)}</span>
+              </div>
+              {/* --- FIM da Seção de Resumo de Totais --- */}
+
             </div>
           </CardContent>
         </Card>
