@@ -89,19 +89,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+const signIn = async (email: string, password: string) => {
     try {
-      setLoading(true); // Inicia carregamento
-      const result = await authSignIn(email, password);
-      toast({ title: "Login realizado", description: "Você entrou com sucesso." });
-      return result;
+        setLoading(true);
+        const result = await authSignIn(email, password); // result agora deve conter { user, session }
+        // IMPORTANTE: Remova ou comente esta toast de sucesso por enquanto.
+        // Ela pode estar sendo disparada antes que a página redirecione,
+        // ou pode ser redundante e causar confusão.
+        // toast({ title: "Login realizado", description: "Você entrou com sucesso." });
+        return result;
     } catch (error: any) {
-      toast({ title: "Erro ao fazer login", description: error.message, variant: "destructive" });
-      throw error;
+        console.error("AuthContext: Erro capturado no signIn:", error.message); // Verifique esta mensagem no console
+        toast({
+            title: "Erro ao fazer login",
+            description: error.message,
+            variant: "destructive",
+        });
+        throw error;
     } finally {
-      // O useEffect acima será acionado pelo novo supabaseUser, e ele cuidará do setLoading(false)
+        // O useEffect que atualiza o currentUser e loading será disparado
+        // pelo onAuthStateChange ou pela atualização do session/user no useAuthState.
     }
-  };
+};
 
   const logOut = async () => {
     try {
