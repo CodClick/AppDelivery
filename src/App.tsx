@@ -31,20 +31,29 @@ const queryClient = new QueryClient();
 
 // Componente PrivateRoute com verificação de role ativada
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
-  const { currentUser, userRole, loading } = useAuth(); // Pega userRole do useAuth
+  const { currentUser, userRole, loading } = useAuth(); // Pega 'loading' e 'userRole' do contexto
 
+  // 1. Mostrar tela de carregamento ENQUANTO QUALQUER DADO DO AUTH ESTIVER CARREGANDO
   if (loading) {
+    console.log("PrivateRoute: AuthContext ainda está carregando...");
     return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
   }
 
+  // 2. Se o loading acabou e não há currentUser, redireciona para login
   if (!currentUser) {
     console.log("PrivateRoute: Usuário não autenticado, redirecionando para /login");
     return <Navigate to="/login" />;
   }
 
-  // --- Adição para depuração ---
+  // 3. Se o loading acabou e há currentUser, verifica o role
   console.log(`PrivateRoute: userRole = '${userRole}' | role esperado = '${role}'`);
-  // --- Fim da adição ---
+  if (role && userRole !== role) {
+    console.log(`PrivateRoute: Acesso negado. userRole '${userRole}' != role esperado '${role}'. Redirecionando para /unauthorized`);
+    return <Navigate to="/unauthorized" />;
+  }
+
+  console.log(`PrivateRoute: Acesso permitido para userRole '${userRole}' na rota com role '${role || "qualquer logado"}'`);
+  return <>{children}</>;
 
   // Lógica para verificar o role:
   // Se um 'role' for especificado na rota E o 'userRole' do usuário não for o 'role' especificado, redireciona.
