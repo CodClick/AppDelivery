@@ -38,11 +38,21 @@ export async function signIn(email: string, password: string): Promise<any> {
     password,
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Erro do Supabase Auth signIn:", error); // Adicione este log para ver o erro real do Supabase
+    throw error; // Lança o erro para o AuthContext
+  }
 
-  return data;
+  // **NOVA VERIFICAÇÃO**: Garante que o usuário existe no 'data' retornado
+  if (!data || !data.user) {
+      const customError = new Error("Usuário não encontrado após login bem-sucedido (verifique data.user).");
+      console.error("authService: data ou data.user é nulo após signIn:", data);
+      throw customError; // Lança um erro customizado se o usuário não for retornado
+  }
+
+  return data; // Retorna data.user
 }
-
+// ...
 // ---------- SIGN OUT ----------
 export async function logOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
