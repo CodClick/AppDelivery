@@ -1,3 +1,5 @@
+// src/pages/AdminOrders.tsx
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
@@ -100,6 +102,10 @@ const AdminOrders = () => {
       const unsubscribe = onSnapshot(
         ordersQuery,
         (snapshot) => {
+          // Apenas recarrega se houver mudanças significativas ou se a dataRange for a mesma do carregamento inicial
+          // Para evitar recarregamentos desnecessários em cada pequena alteração que não afeta o filtro.
+          // Uma abordagem mais refinada seria atualizar apenas os pedidos específicos que mudaram.
+          // Por simplicidade, para o propósito deste listener, vamos disparar o loadOrders completo se houver alguma mudança.
           if (!snapshot.empty) {
             loadOrders(activeStatus, dateRange);
           }
@@ -131,7 +137,7 @@ const AdminOrders = () => {
 
       return () => unsubscribe();
     }
-  }, [activeStatus, dateRange, toast]);
+  }, [activeStatus, dateRange, toast]); // Adicione toast às dependências do useEffect
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
@@ -143,24 +149,29 @@ const AdminOrders = () => {
   };
 
   const handleUpdateOrderStatus = async (
-    orderId: string, 
-    newStatus?: Order["status"], 
-    cancellationReason?: string, 
+    orderId: string,
+    newStatus?: Order["status"],
+    cancellationReason?: string,
     paymentStatus?: "a_receber" | "recebido"
   ) => {
     try {
       console.log("AdminOrders - Atualizando pedido:", { orderId, newStatus, paymentStatus });
-      
+
       // Preparar objeto de atualização
       const updateData: any = {};
-      
+
       if (newStatus) {
         updateData.status = newStatus;
       }
-      
+
       if (paymentStatus) {
         updateData.paymentStatus = paymentStatus;
       }
+
+      // Adicione aqui a lógica para cancellationReason se for implementada a opção de cancelar pelo modal
+      // if (cancellationReason) {
+      //   updateData.cancellationReason = cancellationReason;
+      // }
 
       const updatedOrder = await updateOrder(orderId, updateData);
 
@@ -175,9 +186,10 @@ const AdminOrders = () => {
           setSelectedOrder(updatedOrder);
         }
 
-        const statusMessage = newStatus ? 
+        const statusMessage = newStatus ?
           `Status alterado para ${translateStatus(newStatus)}` :
-          `Status de pagamento alterado para ${paymentStatus === "recebido" ? "Recebido" : "A Receber"}`;
+          paymentStatus ? `Status de pagamento alterado para ${paymentStatus === "recebido" ? "Recebido" : "A Receber"}` :
+          "Pedido atualizado."; // Fallback message
 
         toast({
           title: "Pedido atualizado",
@@ -197,11 +209,12 @@ const AdminOrders = () => {
   const translateStatus = (status: Order["status"]) => {
     const statusMap: Record<Order["status"], string> = {
       pending: "Pendente",
+      accepted: "Aceito", // Adicionei 'accepted' aqui, se for um status válido
       confirmed: "Aceito",
       preparing: "Em produção",
       ready: "Pronto para Entrega",
       delivering: "Saiu para entrega",
-      received: "Recebido",
+      received: "Recebido", // Assumindo 'received' como entregue e finalizado
       delivered: "Entrega finalizada",
       cancelled: "Cancelado",
       to_deduct: "A descontar",
@@ -213,11 +226,12 @@ const AdminOrders = () => {
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800";
-      case "confirmed": return "bg-blue-100 text-blue-800";
+      case "confirmed":
+      case "accepted": return "bg-blue-100 text-blue-800"; // Inclua 'accepted'
       case "preparing": return "bg-purple-100 text-purple-800";
       case "ready": return "bg-green-100 text-green-800";
       case "delivering": return "bg-blue-100 text-blue-800";
-      case "received": return "bg-blue-200 text-blue-800";
+      case "received":
       case "delivered": return "bg-green-100 text-green-800";
       case "cancelled": return "bg-red-100 text-red-800";
       case "to_deduct": return "bg-orange-100 text-orange-800";
@@ -264,7 +278,7 @@ const AdminOrders = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Pedidos</h1>
         <Button onClick={() => navigate("/admin-dashboard")} variant="outline">
-          Pagina de Administração
+          Página de Administração
         </Button>
       </div>
 
@@ -288,7 +302,7 @@ const AdminOrders = () => {
 
           <div>
             <label className="text-sm font-medium mb-2 block">Filtrar por período:</label>
-            <DateRangePicker 
+            <DateRangePicker
               dateRange={dateRange}
               onDateRangeChange={handleDateRangeChange}
               className="w-full"
@@ -323,17 +337,21 @@ const AdminOrders = () => {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Itens: {order.items.length}</p>
                 <p className="font-medium">Total: R$ {order.total.toFixed(2)}</p>
-                <Button 
-                  onClick={() => handleViewOrder(order)} 
+                <Button
+                  onClick={() => handleViewOrder(order)}
                   variant="outline"
                   className="w-full mt-2"
                 >
                   Ver detalhes
                 </Button>
+                {/* Botão de "Marcar como Recebido" só aparece se o status não for "received" ou "delivered" */}
                 {order.status !== "received" && order.status !== "delivered" && (
                   <Button
                     onClick={() => {
-                      const novoStatus = order.status === "delivering" ? "delivered" : "received";
+                      // Você precisa definir qual status o botão "Marcar como Recebido" deve definir.
+                      // Se "received" significa que o cliente recebeu, use "received".
+                      // Se for para quando a entrega finalizou, use "delivered".
+                      const novoStatus = order.status === "delivering" ? "delivered" : "received"; // Exemplo: se está entregando, marca como entregue. Caso contrário, marca como recebido.
                       handleUpdateOrderStatus(order.id, novoStatus);
                     }}
                     variant="secondary"
@@ -362,8 +380,8 @@ const AdminOrders = () => {
         </div>
         {dateRange?.from && (
           <div className="text-center mt-2 text-sm text-gray-500">
-            Período: {dateRange.from.toLocaleDateString('pt-BR')} 
-            {dateRange.to && dateRange.to !== dateRange.from && ` até ${dateRange.to.toLocaleDateString('pt-BR')}`}
+            Período: {dateRange.from.toLocaleDateString('pt-BR')}
+            {dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() && ` até ${dateRange.to.toLocaleDateString('pt-BR')}`}
           </div>
         )}
       </div>
@@ -378,9 +396,15 @@ const AdminOrders = () => {
           </DialogHeader>
 
           {selectedOrder && (
-            <OrderDetails 
-              order={selectedOrder} 
-              onUpdateStatus={handleUpdateOrderStatus} 
+            <OrderDetails
+              order={selectedOrder}
+              onUpdateStatus={handleUpdateOrderStatus}
+              // --- PASSA AS INFORMAÇÕES DO CUPOM PARA O ORDERDETAILS ---
+              discountAmount={selectedOrder.discountAmount || 0}
+              couponCode={selectedOrder.couponCode}
+              couponType={selectedOrder.couponType}
+              couponValue={selectedOrder.couponValue}
+              // --- FIM DOS NOVOS PROPS ---
             />
           )}
 
