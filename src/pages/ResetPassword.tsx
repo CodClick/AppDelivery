@@ -2,15 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast"; // Para notificações
+import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lock } from "lucide-react"; // Ícone de cadeado
+import { Lock } from "lucide-react";
 
-// Importar o cliente Supabase configurado
-// Exemplo: import { supabase } from "@/lib/supabaseClient"; 
-// Certifique-se de que seu supabaseClient esteja configurado corretamente.
-// O Supabase se encarrega de ler o access_token da URL automaticamente
-// quando a página carrega e uma nova sessão é estabelecida.
+// 🚀 IMPORTAÇÃO DO SEU CLIENTE SUPABASE REAL AQUI!
+import { supabase } from "@/lib/supabaseClient"; // Ajuste o caminho se for diferente
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -20,26 +17,36 @@ const ResetPassword = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // useEffect para verificar e gerenciar o estado da sessão do Supabase, se necessário
-  // O Supabase geralmente lida com o token da URL automaticamente,
-  // mas você pode querer verificar o status da sessão aqui.
+  // O Supabase se encarrega de ler o access_token da URL automaticamente
+  // quando a página carrega e uma nova sessão é estabelecida.
+  // Você não precisa extrair o token manualmente na maioria dos casos.
   useEffect(() => {
-    // Exemplo: Se precisar de lógica para verificar a sessão ou o token
-    // const { data: { session } } = await supabase.auth.getSession();
-    // if (!session && !window.location.hash.includes('type=recovery')) {
-    //   navigate('/login'); // Redireciona se não houver sessão ou token de recuperação
-    // }
+    // Você pode adicionar uma lógica aqui para verificar a sessão
+    // Se, por algum motivo, a sessão não for estabelecida (link expirado, inválido),
+    // o supabase.auth.getSession() ou supabase.auth.onAuthStateChange
+    // indicariam isso. Para este fluxo, o Supabase já lida com a validade do token.
+    // No entanto, se precisar de alguma verificação extra ou redirecionamento,
+    // este é o lugar. Por exemplo:
+    // const checkSession = async () => {
+    //   const { data: { session } } = await supabase.auth.getSession();
+    //   if (!session) {
+    //     // Se não houver sessão válida (token inválido/expirado), redirecione para /forgot-password
+    //     setError("Link de redefinição inválido ou expirado. Por favor, solicite um novo.");
+    //     // setTimeout(() => navigate('/forgot-password'), 3000); // Exemplo de redirecionamento após 3 segundos
+    //   }
+    // };
+    // checkSession();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validação básica de senhas
     if (password !== confirmPassword) {
       setError("As senhas não conferem. Por favor, digite novamente.");
       return;
     }
-    
+
     if (password.length < 6) { // Exemplo de requisito mínimo, ajuste se necessário
         setError("A senha deve ter pelo menos 6 caracteres.");
         return;
@@ -49,11 +56,11 @@ const ResetPassword = () => {
       setError("");
       setLoading(true);
 
-      // CHAMADA REAL PARA O SUPABASE PARA ATUALIZAR A SENHA
+      // 🚀 CHAMADA REAL PARA O SUPABASE PARA ATUALIZAR A SENHA
       // A função updateUser do Supabase é usada quando o usuário já está "logado"
       // ou tem uma sessão temporária via o token de recuperação.
-      const { data, error: updateError } = await supabase.auth.updateUser({ 
-        password: password 
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
       });
 
       if (updateError) {
@@ -64,9 +71,9 @@ const ResetPassword = () => {
         title: "Senha redefinida com sucesso!",
         description: "Você já pode fazer login com sua nova senha.",
       });
-      
-      // Redirecionamento sugerido
-      navigate("/login", { state: { message: "password_reset_success" } }); 
+
+      // Redireciona para a página de login com uma mensagem de sucesso
+      navigate("/login", { state: { message: "password_reset_success" } });
 
     } catch (err: any) {
       console.error("Erro ao redefinir senha:", err);
@@ -91,13 +98,13 @@ const ResetPassword = () => {
             Crie uma senha forte e segura para sua conta AppDelivery.
           </p>
         </div>
-        
+
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
@@ -118,7 +125,7 @@ const ResetPassword = () => {
                 />
               </div>
             </div>
-            
+
             <div>
               <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
                 Confirmar Nova Senha
@@ -138,7 +145,7 @@ const ResetPassword = () => {
               </div>
             </div>
           </div>
-          
+
           <Button
             type="submit"
             className="w-full bg-brand hover:bg-brand-600"
