@@ -25,6 +25,8 @@ import Checkout from "./pages/Checkout";
 import AppLayout from "@/components/layouts/AppLayout";
 import AdminRegister from "./pages/AdminRegister";
 import AdminCupons from "@/pages/AdminCupons";
+import ForgotPassword from './pages/ForgotPassword'; 
+import ResetPassword from './pages/ResetPassword';
 import { EmpresaProvider } from "@/contexts/EmpresaContext"; // Mantenha se ainda for usado na rota /:slug
 
 const queryClient = new QueryClient();
