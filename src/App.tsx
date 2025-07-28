@@ -29,8 +29,6 @@ import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
 const queryClient = new QueryClient();
 
-// ---
-// Componente PrivateRoute com verificação de role ativada
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
   const { currentUser, loading } = useAuth();
 
@@ -39,18 +37,23 @@ const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: st
   }
 
   if (!currentUser) {
+    console.log("PrivateRoute: Usuário não autenticado, redirecionando para /login");
     return <Navigate to="/login" />;
   }
 
+  // --- Adição para depuração ---
+  console.log(`PrivateRoute: currentUser.role = '${currentUser.role}' | role esperado = '${role}'`);
+  // --- Fim da adição ---
+
   // Lógica para verificar o role: Se um role for especificado E o role do usuário não for o role especificado, redireciona.
   if (role && currentUser.role !== role) {
-    // Você pode criar uma página específica para "acesso negado" ou redirecionar para a home
+    console.log(`PrivateRoute: Acesso negado. currentUser.role '${currentUser.role}' != role esperado '${role}'. Redirecionando para /unauthorized`);
     return <Navigate to="/unauthorized" />;
   }
 
+  console.log(`PrivateRoute: Acesso permitido para role '${currentUser.role}' na rota com role '${role || "qualquer logado"}'`);
   return <>{children}</>;
 };
-// ---
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -84,7 +87,7 @@ const App = () => (
               <Route
                 path="/admin-coupons"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                        <AdminCupons />
                     </AppLayout>
@@ -94,7 +97,7 @@ const App = () => (
               <Route
                 path="/admin-dashboard"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <AdminDashboard />
                     </AppLayout>
@@ -104,7 +107,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <Admin />
                     </AppLayout>
@@ -114,7 +117,7 @@ const App = () => (
               <Route
                 path="/orders"
                 element={
-                  <PrivateRoute> {/* Se essa rota for para todos os usuários logados, não precisa de role */}
+                  <PrivateRoute> {/* Esta rota aceita qualquer usuário logado */}
                     <AppLayout>
                       <Orders />
                     </AppLayout>
@@ -124,7 +127,7 @@ const App = () => (
               <Route
                 path="/admin-orders"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <AdminOrders />
                     </AppLayout>
@@ -134,7 +137,7 @@ const App = () => (
               <Route
                 path="/entregador"
                 element={
-                  <PrivateRoute role="entregador"> {/* Apenas entregador */}
+                  <PrivateRoute role="entregador">
                     <AppLayout>
                       <Entregador />
                     </AppLayout>
@@ -144,7 +147,7 @@ const App = () => (
               <Route
                 path="/pdv"
                 element={
-                  <PrivateRoute role="admin"> {/* Apenas admin (geralmente PDV é de admin/gerente) */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <PDV />
                     </AppLayout>
@@ -154,7 +157,7 @@ const App = () => (
               <Route
                 path="/api/*"
                 element={
-                  <PrivateRoute role="admin"> {/* Se API for para uso interno de admin */}
+                  <PrivateRoute role="admin">
                     <AppLayout>
                       <Api />
                     </AppLayout>
