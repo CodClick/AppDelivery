@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import { useContext } from "react";
 import React, { createContext, useEffect, useState } from "react";
 import { useAuthState } from "@/hooks/useAuthState";
@@ -10,9 +11,16 @@ import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 
+// 1. Defina uma interface para o seu usuário personalizado que inclui o 'role'
+// Isso é crucial para que o TypeScript saiba que 'currentUser' pode ter 'role'.
+interface CustomUser extends User {
+  role?: string; // Adicione a propriedade 'role' aqui
+  // Adicione outras propriedades personalizadas da sua tabela 'usuarios' se houver
+}
+
 interface AuthContextType {
-  currentUser: User | null;
-  userRole: string | null;
+  currentUser: CustomUser | null; // Agora currentUser pode ter a propriedade 'role'
+  userRole: string | null; // Mantido por compatibilidade, mas o ideal é usar currentUser.role
   loading: boolean;
   signUp: (
     email: string,
@@ -27,36 +35,45 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, loading } = useAuthState();
+  const { currentUser: supabaseUser, loading } = useAuthState(); // Renomeado para evitar conflito
+  const [currentUser, setCurrentUser] = useState<CustomUser | null>(null); // Novo estado para o usuário completo
   const [userRole, setUserRole] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (currentUser) {
+    const fetchAndSetUser = async () => {
+      if (supabaseUser) {
+        // Agora busca o role e outras informações personalizadas
         const { data, error } = await supabase
-          .from("usuarios")
-          .select("role")
-          .eq("id", currentUser.id)
+          .from("usuarios") // Verifique se o nome da tabela está correto ("usuarios")
+          .select("role") // Selecione apenas as colunas que você precisa
+          .eq("id", supabaseUser.id)
           .single();
 
         if (data?.role) {
-          setUserRole(data.role);
+          const updatedUser: CustomUser = { ...supabaseUser, role: data.role };
+          setCurrentUser(updatedUser);
+          setUserRole(data.role); // Atualiza o userRole separado também
+          console.log("AuthContext: Usuário carregado com role:", data.role); // Debug
         } else {
-          console.warn("Role não encontrada para o usuário atual.", error);
+          // Se não encontrar o role, define o usuário sem role ou com um role padrão se desejar
+          setCurrentUser(supabaseUser as CustomUser); // Mantém o usuário do Supabase
           setUserRole(null);
+          console.warn("Role não encontrada para o usuário:", supabaseUser.id, error?.message);
         }
       } else {
+        setCurrentUser(null);
         setUserRole(null);
       }
     };
 
-    fetchUserRole();
-  }, [currentUser]);
-  
+    fetchAndSetUser();
+  }, [supabaseUser]); // Dependência do usuário original do Supabase
+
   const signUp = async (email: string, password: string, name?: string, phone?: string) => {
     try {
       const result = await authSignUp(email, password, name, phone);
+      // Após o signup, o useAuthState vai detectar o novo usuário e acionar o useEffect acima.
       toast({
         title: "Conta criada com sucesso",
         description: "Bem-vindo ao nosso aplicativo!",
@@ -75,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       const result = await authSignIn(email, password);
+      // Após o signIn, o useAuthState vai detectar o novo usuário e acionar o useEffect acima.
       toast({
         title: "Login realizado",
         description: "Você entrou com sucesso.",
@@ -93,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logOut = async () => {
     try {
       await authLogOut();
+      // Após o logout, useAuthState definirá supabaseUser como null, e o useEffect acima limpará o estado.
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado com sucesso.",
@@ -108,9 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const value = {
-    currentUser,
-    userRole,
-    loading,
+    currentUser, // Agora currentUser já contém o role
+    userRole, // Mantido para compatibilidade se necessário, mas currentUser.role é preferível
+    loading, // Este 'loading' vem do useAuthState, indica se a sessão inicial está carregando
     signUp,
     signIn,
     logOut,
@@ -118,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!loading && children} {/* Renderiza children apenas depois que o carregamento inicial do auth terminar */}
     </AuthContext.Provider>
   );
 };
