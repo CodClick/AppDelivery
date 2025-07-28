@@ -60,7 +60,9 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/admin-register" element={<AdminRegister />} />
               <Route path="/checkout" element={<Checkout />} /> {/* Checkout não precisa mais de CartProvider aninhado */}
-
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              
               {/* Rota inicial que usa AppLayout */}
               <Route
                 path="/"
