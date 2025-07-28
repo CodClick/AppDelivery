@@ -1,12 +1,11 @@
-// src/contexts/CartContext.tsx
-// Esta é a versão que deve estar AGORA no seu CartContext.tsx
-
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { CartItem, MenuItem, SelectedVariationGroup } from "@/types/menu";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/use-toast"; // Assumindo que você usa o use-toast do shadcn/ui
 import { getAllVariations } from "@/services/variationService";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/hooks/useAuth"; // Importe o useAuth
 
+// --- Interface para o Cupom ---
 interface Coupon {
   id: string;
   nome: string;
@@ -18,6 +17,7 @@ interface Coupon {
   empresa_id: string;
 }
 
+// --- Interface para o Contexto do Carrinho ---
 interface CartContextType {
   cartItems: CartItem[];
   addItem: (item: MenuItem & { selectedVariations?: SelectedVariationGroup[] }) => void;
@@ -26,40 +26,38 @@ interface CartContextType {
   increaseQuantity: (id: string) => void;
   decreaseQuantity: (id: string) => void;
   clearCart: () => void;
-  cartTotal: number;
+  cartTotal: number; // Total bruto do carrinho (antes do cupom)
   itemCount: number;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   applyCoupon: (couponCode: string) => Promise<void>;
   appliedCoupon: Coupon | null;
   removeCoupon: () => void;
-  discountAmount: number;
-  finalTotal: number;
+  discountAmount: number; // O valor monetário do desconto aplicado
+  finalTotal: number; // O total final após o desconto
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Interface para as props do CartProvider (que agora espera empresaId)
-interface CartProviderProps {
-  children: ReactNode;
-  empresaId: string | null; // <--- empresaId AGORA É OBRIGATÓRIO (ou null inicialmente)
-}
-
-export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId }) => { // <--- Recebe empresaId
+// --- Componente CartProvider ---
+export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // --- Estados do Carrinho ---
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartTotal, setCartTotal] = useState(0);
+  const [cartTotal, setCartTotal] = useState(0); // Este será o total ANTES do desconto
   const [itemCount, setItemCount] = useState(0);
   const [variations, setVariations] = useState<any[]>([]);
 
+  // --- Estados do Cupom ---
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [finalTotal, setFinalTotal] = useState<number>(0);
 
- export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // ... (seus estados, incluindo currentUser e userEmpresaId)
+  // --- Estado e Hook para o usuário logado e empresa_id ---
+  const { currentUser } = useAuth(); // Obtém o usuário logado do AuthContext
+  const [userEmpresaId, setUserEmpresaId] = useState<string | null>(null);
 
-  // --- useEffect 1: Para buscar o empresa_id do usuário logado ---
+  // --- useEffect 1: Busca o empresa_id do usuário logado ---
   useEffect(() => {
     const fetchUserEmpresaId = async () => {
       console.log("DEBUG: useEffect do CartContext acionado (busca empresa_id).");
@@ -99,7 +97,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
     fetchUserEmpresaId();
   }, [currentUser]); // Dependência: só roda quando currentUser muda
 
-  // --- useEffect 2: Para carregar todas as variações ---
+  // --- useEffect 2: Carrega todas as variações (para cálculo de preço) ---
   useEffect(() => {
     console.log("DEBUG: useEffect do CartContext acionado (carrega variações).");
     const loadVariations = async () => {
@@ -114,7 +112,35 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
     loadVariations();
   }, []); // Dependência: roda apenas uma vez na montagem do componente
 
-  // --- useEffect 3: Para recalcular cartTotal e itemCount (o total BRUTO) ---
+  // --- Funções Auxiliares de Cálculo (podem ser definidas aqui) ---
+  const getVariationPrice = (variationId: string): number => {
+    const variation = variations.find(v => v.id === variationId);
+    return variation?.additionalPrice || 0;
+  };
+
+  const getVariationName = (variationId: string): string => {
+    const variation = variations.find(v => v.id === variationId);
+    return variation?.name || '';
+  };
+
+  const calculateVariationsTotal = (item: CartItem): number => {
+    let variationsTotal = 0;
+    if (item.selectedVariations && item.selectedVariations.length > 0) {
+      item.selectedVariations.forEach(group => {
+        if (group.variations && group.variations.length > 0) {
+          group.variations.forEach(variation => {
+            const additionalPrice = variation.additionalPrice !== undefined ? variation.additionalPrice : getVariationPrice(variation.variationId);
+            if (additionalPrice > 0) {
+              variationsTotal += additionalPrice * (variation.quantity || 1);
+            }
+          });
+        }
+      });
+    }
+    return variationsTotal;
+  };
+
+  // --- useEffect 3: Recalcula cartTotal e itemCount (o total BRUTO) ---
   useEffect(() => {
     console.log("DEBUG: useEffect do CartContext acionado (calcula cartTotal/itemCount).");
     const { total, count } = cartItems.reduce(
@@ -134,7 +160,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
     setItemCount(count);
   }, [cartItems, variations]); // Dependências: cartItems ou variations mudam
 
-  // --- useEffect 4: Para recalcular finalTotal quando cartTotal ou discountAmount mudam ---
+  // --- useEffect 4: Recalcula finalTotal quando cartTotal ou discountAmount mudam ---
   useEffect(() => {
     console.log("DEBUG: useEffect do CartContext acionado (calcula finalTotal).");
     let calculatedFinalTotal = cartTotal - discountAmount;
@@ -144,60 +170,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
     setFinalTotal(calculatedFinalTotal);
   }, [cartTotal, discountAmount]);
 
-  // Função para obter o preço adicional da variação
-  const getVariationPrice = (variationId: string): number => {
-    const variation = variations.find(v => v.id === variationId);
-    return variation?.additionalPrice || 0;
-  };
 
-  // Função para obter o nome da variação
-  const getVariationName = (variationId: string): string => {
-    const variation = variations.find(v => v.id === variationId);
-    return variation?.name || '';
-  };
-
-  // Função para calcular o valor total das variações de um item
-  const calculateVariationsTotal = (item: CartItem): number => {
-    let variationsTotal = 0;
-    if (item.selectedVariations && item.selectedVariations.length > 0) {
-      item.selectedVariations.forEach(group => {
-        if (group.variations && group.variations.length > 0) {
-          group.variations.forEach(variation => {
-            const additionalPrice = variation.additionalPrice !== undefined ? variation.additionalPrice : getVariationPrice(variation.variationId);
-            if (additionalPrice > 0) {
-              variationsTotal += additionalPrice * (variation.quantity || 1);
-            }
-          });
-        }
-      });
-    }
-    return variationsTotal;
-  };
-
-  useEffect(() => {
-    const { total, count } = cartItems.reduce(
-      (acc, item) => {
-        const basePrice = item.priceFrom ? 0 : (item.price || 0);
-        const variationsTotal = calculateVariationsTotal(item);
-        const itemTotal = (basePrice + variationsTotal) * item.quantity;
-        acc.total += itemTotal;
-        acc.count += item.quantity;
-        return acc;
-      },
-      { total: 0, count: 0 }
-    );
-    setCartTotal(total);
-    setItemCount(count);
-  }, [cartItems, variations]);
-
-  useEffect(() => {
-    let calculatedFinalTotal = cartTotal - discountAmount;
-    if (calculatedFinalTotal < 0) {
-      calculatedFinalTotal = 0;
-    }
-    setFinalTotal(calculatedFinalTotal);
-  }, [cartTotal, discountAmount]);
-
+  // --- Funções de Gerenciamento do Carrinho ---
   const generateCartItemId = (item: MenuItem, selectedVariations?: SelectedVariationGroup[]): string => {
     if (!selectedVariations || selectedVariations.length === 0) {
       return item.id;
@@ -262,10 +236,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
         return [...prevItems, newCartItem];
       }
     });
-
     setAppliedCoupon(null);
     setDiscountAmount(0);
-
     toast({
       title: "Item adicionado",
       description: `${item.name} foi adicionado ao carrinho`,
@@ -309,12 +281,21 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
     setDiscountAmount(0);
   };
 
+  // --- Função para Aplicar Cupom ---
   const applyCoupon = useCallback(async (couponCode: string) => {
-    // Agora verifica a prop empresaId
-    if (!empresaId) {
+    if (!currentUser) {
       toast({
         title: "Erro ao aplicar cupom",
-        description: "Não foi possível identificar a empresa para validar o cupom. (Empresa ID ausente na rota)",
+        description: "Você precisa estar logado para aplicar um cupom.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!userEmpresaId) {
+      toast({
+        title: "Erro ao aplicar cupom",
+        description: "Não foi possível carregar as informações da sua empresa. Tente novamente mais tarde.",
         variant: "destructive",
       });
       return;
@@ -325,13 +306,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
       .select('*')
       .eq('nome', couponCode.toUpperCase())
       .eq('ativo', true)
-      .eq('empresa_id', empresaId) // Usa o empresaId da prop
+      .eq('empresa_id', userEmpresaId)
       .single();
 
     if (error || !data) {
       toast({
         title: "Cupom inválido",
-        description: "O código do cupom está incorreto ou o cupom não existe/não está ativo para esta empresa.",
+        description: "O código do cupom está incorreto ou o cupom não existe/não está ativo para sua empresa.",
         variant: "destructive",
       });
       setAppliedCoupon(null);
@@ -373,8 +354,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
       description: `"${coupon.nome}" aplicado com sucesso.`,
     });
 
-  }, [cartTotal, empresaId, toast]); // Dependências atualizadas
+  }, [cartTotal, currentUser, userEmpresaId, toast]);
 
+  // --- Função para Remover Cupom ---
   const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
     setDiscountAmount(0);
@@ -384,6 +366,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
     });
   }, [toast]);
 
+  // --- Renderização do Provedor ---
   return (
     <CartContext.Provider
       value={{
@@ -397,6 +380,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
   );
 };
 
+// --- Hook useContext para Consumir o Contexto ---
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
@@ -404,4 +388,3 @@ export const useCart = () => {
   }
   return context;
 };
-      
