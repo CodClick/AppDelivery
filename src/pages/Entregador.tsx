@@ -49,9 +49,6 @@ const Entregador = () => {
   }, []);
 
   const handleConfirmEntrega = async (order: Order) => {
-    // A lógica para definir o novoStatus permanece a mesma:
-    // Se o método de pagamento for "cash" (dinheiro), o status final é "received" (recebido pelo entregador).
-    // Caso contrário (cartão, pix, desconto), o status final é "delivered" (entrega finalizada, sem coleta de valor).
     const novoStatus = order.paymentMethod === "cash" ? "received" : "delivered";
 
     try {
@@ -97,13 +94,23 @@ const Entregador = () => {
     }
   };
 
-  const translatePaymentStatus = (status?: Order["paymentStatus"]) => {
-    switch (status) {
-      case "a_receber": return "A Receber (Pagamento no local)";
-      case "recebido": return "Recebido (Pagamento já efetuado)";
-      default: return "Status de Pagamento Indefinido"; // Caso o campo não esteja presente ou tenha outro valor
+  // --- FUNÇÃO AJUSTADA AQUI PARA TRATAR NULOS/INDEFINIDOS COMO "A RECEBER" ---
+  const getPaymentStatusText = (status?: Order["paymentStatus"]) => {
+    if (status === "recebido") {
+      return "Recebido (Pagamento já efetuado)";
     }
+    // Se não for "recebido" ou se for undefined/null, consideramos "A Receber"
+    return "A Receber (Pagamento no local)";
   };
+
+  // --- NOVA FUNÇÃO PARA RETORNAR A CLASSE DE COR ---
+  const getPaymentStatusColorClass = (status?: Order["paymentStatus"]) => {
+    if (status === "recebido") {
+      return "text-green-600 font-semibold"; // Verde e negrito para destacar
+    }
+    return "text-red-600 font-semibold"; // Vermelho e negrito para "A Receber"
+  };
+  // --- FIM DAS NOVAS FUNÇÕES ---
 
   const formatFullDate = (input: string | Date | Timestamp) => {
     let date: Date;
@@ -194,11 +201,11 @@ const Entregador = () => {
                   <p className="text-sm text-gray-700">{translatePaymentMethod(order.paymentMethod)}</p>
                 </div>
 
-                {/* Status de Pagamento - NOVO CAMPO */}
+                {/* Status de Pagamento - AGORA COM CORES E LÓGICA REVISADA */}
                 <div>
                   <p className="font-semibold text-sm">Status de Pagamento:</p>
-                  <p className="text-sm text-gray-700">
-                    {translatePaymentStatus(order.paymentStatus)}
+                  <p className={`text-sm ${getPaymentStatusColorClass(order.paymentStatus)}`}>
+                    {getPaymentStatusText(order.paymentStatus)}
                   </p>
                 </div>
 
@@ -224,3 +231,4 @@ const Entregador = () => {
 };
 
 export default Entregador;
+              
