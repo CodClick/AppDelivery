@@ -56,18 +56,93 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, empresaId 
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [finalTotal, setFinalTotal] = useState<number>(0);
 
-  // Load all variations when the component mounts
+ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ... (seus estados, incluindo currentUser e userEmpresaId)
+
+  // --- useEffect 1: Para buscar o empresa_id do usuário logado ---
   useEffect(() => {
+    const fetchUserEmpresaId = async () => {
+      console.log("DEBUG: useEffect do CartContext acionado (busca empresa_id).");
+      console.log("DEBUG: currentUser (antes da verificação):", currentUser);
+
+      if (currentUser) {
+        console.log("DEBUG: currentUser existe. ID:", currentUser.id);
+        console.log("DEBUG: Buscando empresa_id para o usuário na tabela 'usuarios'...");
+
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('empresa_id')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (error) {
+          console.error("DEBUG: ERRO Supabase ao buscar empresa_id:", error.message);
+          setUserEmpresaId(null);
+        } else if (data) {
+          console.log("DEBUG: Dados encontrados:", data);
+          if (data.empresa_id) {
+            console.log("DEBUG: empresa_id ENCONTRADO:", data.empresa_id);
+            setUserEmpresaId(data.empresa_id);
+          } else {
+            console.log("DEBUG: Dados encontrados, mas empresa_id é null/undefined.");
+            setUserEmpresaId(null);
+          }
+        } else {
+          console.log("DEBUG: Nenhum dado retornado para o usuário na tabela 'usuarios'.");
+          setUserEmpresaId(null);
+        }
+      } else {
+        console.log("DEBUG: currentUser é nulo, não é possível buscar empresa_id.");
+        setUserEmpresaId(null);
+      }
+    };
+    fetchUserEmpresaId();
+  }, [currentUser]); // Dependência: só roda quando currentUser muda
+
+  // --- useEffect 2: Para carregar todas as variações ---
+  useEffect(() => {
+    console.log("DEBUG: useEffect do CartContext acionado (carrega variações).");
     const loadVariations = async () => {
       try {
         const allVariations = await getAllVariations();
         setVariations(allVariations);
+        console.log("DEBUG: Variações carregadas.");
       } catch (error) {
-        console.error("Erro ao carregar variações:", error);
+        console.error("DEBUG: Erro ao carregar variações:", error);
       }
     };
     loadVariations();
-  }, []);
+  }, []); // Dependência: roda apenas uma vez na montagem do componente
+
+  // --- useEffect 3: Para recalcular cartTotal e itemCount (o total BRUTO) ---
+  useEffect(() => {
+    console.log("DEBUG: useEffect do CartContext acionado (calcula cartTotal/itemCount).");
+    const { total, count } = cartItems.reduce(
+      (acc, item) => {
+        const basePrice = item.priceFrom ? 0 : (item.price || 0);
+        const variationsTotal = calculateVariationsTotal(item);
+        const itemTotal = (basePrice + variationsTotal) * item.quantity;
+
+        acc.total += itemTotal;
+        acc.count += item.quantity;
+        return acc;
+      },
+      { total: 0, count: 0 }
+    );
+
+    setCartTotal(total);
+    setItemCount(count);
+  }, [cartItems, variations]); // Dependências: cartItems ou variations mudam
+
+  // --- useEffect 4: Para recalcular finalTotal quando cartTotal ou discountAmount mudam ---
+  useEffect(() => {
+    console.log("DEBUG: useEffect do CartContext acionado (calcula finalTotal).");
+    let calculatedFinalTotal = cartTotal - discountAmount;
+    if (calculatedFinalTotal < 0) {
+      calculatedFinalTotal = 0;
+    }
+    setFinalTotal(calculatedFinalTotal);
+  }, [cartTotal, discountAmount]);
 
   // Função para obter o preço adicional da variação
   const getVariationPrice = (variationId: string): number => {
