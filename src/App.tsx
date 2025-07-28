@@ -3,11 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"; // Removido useParams
-import { CartProvider } from "@/contexts/CartContext"; // CartProvider sem prop empresaId
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-// Removido EmpresaProvider e useEmpresa daqui, pois o CartProvider não precisa mais dele diretamente.
-// Se você usa EmpresaProvider para outras coisas na sua Index, ele pode ficar onde estava na rota /:slug
 import { useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -25,32 +23,40 @@ import Checkout from "./pages/Checkout";
 import AppLayout from "@/components/layouts/AppLayout";
 import AdminRegister from "./pages/AdminRegister";
 import AdminCupons from "@/pages/AdminCupons";
-import ForgotPassword from './pages/ForgotPassword'; 
+import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import { EmpresaProvider } from "@/contexts/EmpresaContext"; // Mantenha se ainda for usado na rota /:slug
+import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
 const queryClient = new QueryClient();
 
+// ---
+// Componente PrivateRoute com verificação de role ativada
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
   const { currentUser, loading } = useAuth();
 
-  if (loading) return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
+  if (loading) {
+    return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
+  }
 
   if (!currentUser) {
     return <Navigate to="/login" />;
   }
 
-  // Lógica para verificar o role, se aplicável
-  // if (role && currentUser.role !== role) { return <Navigate to="/unauthorized" /> }
+  // Lógica para verificar o role: Se um role for especificado E o role do usuário não for o role especificado, redireciona.
+  if (role && currentUser.role !== role) {
+    // Você pode criar uma página específica para "acesso negado" ou redirecionar para a home
+    return <Navigate to="/unauthorized" />;
+  }
 
   return <>{children}</>;
 };
+// ---
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider> {/* AuthProvider mais externo */}
-        <CartProvider> {/* CartProvider agora ENVOLVE TUDO, sem precisar de prop empresaId */}
+      <AuthProvider>
+        <CartProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -59,10 +65,11 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/admin-register" element={<AdminRegister />} />
-              <Route path="/checkout" element={<Checkout />} /> {/* Checkout não precisa mais de CartProvider aninhado */}
+              <Route path="/checkout" element={<Checkout />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              
+              <Route path="/unauthorized" element={<NotFound />} /> {/* Ou uma página de "Acesso Negado" */}
+
               {/* Rota inicial que usa AppLayout */}
               <Route
                 path="/"
@@ -73,12 +80,12 @@ const App = () => (
                 }
               />
 
-              {/* Rotas de Admin e outras rotas privadas */}
+              {/* Rotas de Admin e outras rotas privadas com verificação de role */}
               <Route
                 path="/admin-coupons"
                 element={
-                  <PrivateRoute role="admin">
-                    <AppLayout> {/* Mantenha AppLayout se AdminCupons precisa dele */}
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
+                    <AppLayout>
                        <AdminCupons />
                     </AppLayout>
                   </PrivateRoute>
@@ -87,7 +94,7 @@ const App = () => (
               <Route
                 path="/admin-dashboard"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                       <AdminDashboard />
                     </AppLayout>
@@ -97,7 +104,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                       <Admin />
                     </AppLayout>
@@ -107,7 +114,7 @@ const App = () => (
               <Route
                 path="/orders"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute> {/* Se essa rota for para todos os usuários logados, não precisa de role */}
                     <AppLayout>
                       <Orders />
                     </AppLayout>
@@ -117,7 +124,7 @@ const App = () => (
               <Route
                 path="/admin-orders"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute role="admin"> {/* Apenas admin */}
                     <AppLayout>
                       <AdminOrders />
                     </AppLayout>
@@ -127,7 +134,7 @@ const App = () => (
               <Route
                 path="/entregador"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute role="entregador"> {/* Apenas entregador */}
                     <AppLayout>
                       <Entregador />
                     </AppLayout>
@@ -137,7 +144,7 @@ const App = () => (
               <Route
                 path="/pdv"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute role="admin"> {/* Apenas admin (geralmente PDV é de admin/gerente) */}
                     <AppLayout>
                       <PDV />
                     </AppLayout>
@@ -147,7 +154,7 @@ const App = () => (
               <Route
                 path="/api/*"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute role="admin"> {/* Se API for para uso interno de admin */}
                     <AppLayout>
                       <Api />
                     </AppLayout>
@@ -156,13 +163,9 @@ const App = () => (
               />
 
               {/* Rota de Cliente para slug específico (se ela ainda precisar de EmpresaProvider) */}
-              {/* Se o EmpresaProvider é apenas para carregar dados da empresa e não para passar para o CartProvider,
-                  ele pode ficar aqui. Se ele precisa do slug da URL, ele deve usar useParams. */}
               <Route
                 path="/:slug"
                 element={
-                  // Se Index usa useEmpresa, o EmpresaProvider deve envolvê-lo.
-                  // O CartProvider já está globalmente disponível.
                   <EmpresaProvider>
                     <AppLayout>
                       <Index />
@@ -174,7 +177,6 @@ const App = () => (
               {/* Rota de 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-            {/* ShoppingCart global, agora com acesso ao CartContext corretamente */}
             <ShoppingCart />
           </BrowserRouter>
         </CartProvider>
