@@ -1,7 +1,7 @@
 // src/contexts/AuthContext.tsx
 import { useContext } from "react";
 import React, { createContext, useEffect, useState } from "react";
-import { useAuthState } from "@/hooks/useAuthState"; // Assumindo que este hook fornece User e um 'loading' básico
+import { useAuthState } from "@/hooks/useAuthState";
 import {
   signUp as authSignUp,
   signIn as authSignIn,
@@ -32,16 +32,17 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser: supabaseUser, loading: authStateLoading } = useAuthState(); // Loading da sessão Supabase
+  const { currentUser: supabaseUser, loading: authStateLoading } = useAuthState();
   const [currentUser, setCurrentUser] = useState<CustomUser | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true); // Novo estado de loading COMBINADO para o AuthContext
+  const [loading, setLoading] = useState(true); // Estado de loading COMBINADO
 
   useEffect(() => {
     const fetchAndSetUser = async () => {
-      setLoading(true); // Começa a carregar
+      // Inicia como true, mas será setado para false no final, independente do resultado
+      // setLoading(true); // Já é true por padrão ao iniciar o componente ou após logout
+
       if (supabaseUser) {
-        // Busca o role e outras informações personalizadas
         const { data, error } = await supabase
           .from("usuarios")
           .select("role")
@@ -55,93 +56,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("AuthContext: Usuário carregado com role:", data.role);
         } else {
           setCurrentUser(supabaseUser as CustomUser);
-          setUserRole(null); // Define como null se o role não for encontrado
+          setUserRole(null);
           console.warn("Role não encontrada para o usuário:", supabaseUser.id, error?.message);
         }
       } else {
         setCurrentUser(null);
         setUserRole(null);
       }
-      setLoading(false); // Termina de carregar
+      setLoading(false); // Sempre define como false após tentar carregar o usuário/role
     };
 
-    // Apenas busca o role se o loading básico do authStateLoading for falso
-    // e se o supabaseUser mudou (ou seja, a sessão básica foi carregada ou mudou).
+    // Só começa a buscar o role e o perfil personalizado após o useAuthState ter terminado seu carregamento inicial
     if (!authStateLoading) {
       fetchAndSetUser();
     }
-  }, [supabaseUser, authStateLoading]); // Depende tanto do usuário quanto do loading básico do useAuthState
+  }, [supabaseUser, authStateLoading]);
 
-  // Funções de Autenticação (signIn, signUp, logOut) - Mantenha as que você já tem.
-  // Certifique-se de que elas também acionam a lógica de atualização do role
-  // (o useEffect acima já cuida disso quando `supabaseUser` muda).
-
+  // Funções de Autenticação
   const signUp = async (email: string, password: string, name?: string, phone?: string) => {
     try {
-      setLoading(true); // Inicia carregamento ao tentar signup
+      setLoading(true); // Inicia carregamento
       const result = await authSignUp(email, password, name, phone);
-      toast({
-        title: "Conta criada com sucesso",
-        description: "Bem-vindo ao nosso aplicativo!",
-      });
+      toast({ title: "Conta criada com sucesso", description: "Bem-vindo ao nosso aplicativo!" });
       return result;
     } catch (error: any) {
-      toast({
-        title: "Erro ao criar conta",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao criar conta", description: error.message, variant: "destructive" });
       throw error;
     } finally {
-      setLoading(false); // Termina carregamento
+      // O useEffect acima será acionado pelo novo supabaseUser, e ele cuidará do setLoading(false)
+      // ao final da busca do role. Remover setLoading(false) daqui pode ser melhor para evitar
+      // que o loading seja false antes do role ser totalmente carregado.
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      setLoading(true); // Inicia carregamento ao tentar login
+      setLoading(true); // Inicia carregamento
       const result = await authSignIn(email, password);
-      toast({
-        title: "Login realizado",
-        description: "Você entrou com sucesso.",
-      });
+      toast({ title: "Login realizado", description: "Você entrou com sucesso." });
       return result;
     } catch (error: any) {
-      toast({
-        title: "Erro ao fazer login",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao fazer login", description: error.message, variant: "destructive" });
       throw error;
     } finally {
-      setLoading(false); // Termina carregamento
+      // O useEffect acima será acionado pelo novo supabaseUser, e ele cuidará do setLoading(false)
     }
   };
 
   const logOut = async () => {
     try {
-      setLoading(true); // Inicia carregamento ao tentar logout
+      setLoading(true); // Inicia carregamento
       await authLogOut();
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
-      });
+      toast({ title: "Logout realizado", description: "Você foi desconectado com sucesso." });
     } catch (error: any) {
-      toast({
-        title: "Erro ao fazer logout",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao fazer logout", description: error.message, variant: "destructive" });
       throw error;
     } finally {
-      setLoading(false); // Termina carregamento
+      // O useEffect acima será acionado, e ele cuidará do setLoading(false)
     }
   };
 
   const value = {
     currentUser,
     userRole,
-    loading, // Use este 'loading' combinado
+    loading,
     signUp,
     signIn,
     logOut,
@@ -149,7 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {children} {/* Removi o !loading aqui para deixar o PrivateRoute lidar com isso */}
+      {/* Remova o "!loading && children" daqui. O PrivateRoute já cuida do loading. */}
+      {children}
     </AuthContext.Provider>
   );
 };
