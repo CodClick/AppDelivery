@@ -11,12 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { updateOrder } from "@/services/orderService";
 import { useAuth } from "@/hooks/useAuth"; // Importa o hook de autenticação
+import { supabase } from "@/lib/supabaseClient"; // Importa o cliente Supabase
 
 const Entregador = () => {
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth(); // Obtém o usuário logado do AuthContext
+  const [delivererNames, setDelivererNames] = useState<Record<string, string>>({}); // Novo estado para armazenar nomes de entregadores
 
   // Função para formatar o endereço estruturado
   const formatAddress = (address: Order['address']) => {
@@ -37,6 +39,43 @@ const Entregador = () => {
     return formattedAddress;
   };
 
+  // Função para buscar os nomes dos entregadores
+  const fetchDelivererNames = async () => {
+    if (!currentUser || !currentUser.empresa_id) {
+      console.log("Entregador: currentUser ou empresa_id não disponível para buscar nomes de entregadores.");
+      setDelivererNames({});
+      return;
+    }
+
+    try {
+      console.log("Entregador: Buscando nomes de entregadores para empresa_id:", currentUser.empresa_id);
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nome')
+        .eq('empresa_id', currentUser.empresa_id)
+        .eq('role', 'entregador'); // Filtra apenas entregadores
+
+      if (error) {
+        throw error;
+      }
+
+      const namesMap: Record<string, string> = {};
+      data.forEach(d => {
+        namesMap[d.id] = d.nome;
+      });
+      setDelivererNames(namesMap);
+      console.log("Entregador: Nomes de entregadores carregados:", namesMap);
+    } catch (error: any) {
+      console.error("Entregador: Erro ao buscar nomes de entregadores:", error.message);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os nomes dos entregadores.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   useEffect(() => {
     // Apenas tenta buscar pedidos se houver um currentUser e ele tiver um ID
     if (!currentUser || !currentUser.id) {
@@ -45,6 +84,9 @@ const Entregador = () => {
       setOrders([]);
       return;
     }
+
+    // Chama a função para buscar os nomes dos entregadores
+    fetchDelivererNames();
 
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -208,6 +250,9 @@ const Entregador = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {orders.map((order) => {
             try {
+              // Verifica se o entregador_id existe no pedido e se o nome está disponível
+              const delivererName = order.entregador_id ? delivererNames[order.entregador_id] : null;
+
               return (
                 <Card key={order.id} className="overflow-hidden">
                   <CardHeader className="bg-gray-50 py-4">
@@ -221,6 +266,12 @@ const Entregador = () => {
                           {order.customerPhone}
                         </a>
                       </p>
+                      {/* NOVO: Exibe o nome do entregador se disponível */}
+                      {order.entregador_id && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Entregador: {delivererName || "Desconhecido"}
+                        </p>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="py-4 space-y-2">
