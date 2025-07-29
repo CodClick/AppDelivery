@@ -2,8 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+// Importações do Firestore (mantidas para a lógica de pedidos)
 import { collection, query, where, onSnapshot, orderBy, Timestamp, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase"; // Assumindo que db é sua instância do Firestore
+
+// Importação do Supabase do arquivo centralizado
+import { supabase } from "@/lib/supabaseClient"; // Importa a instância configurada do Supabase
+
 import { Order } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
@@ -57,15 +62,23 @@ const AdminOrders = () => {
   const [loadingDeliverers, setLoadingDeliverers] = useState(false); // Novo estado de carregamento para entregadores
   // --- Fim dos novos estados ---
 
+  // AQUI É O PONTO CRÍTICO: Obtenha o empresa_id dinamicamente.
+  // EXEMPLO: Se você tem um hook ou contexto que fornece o ID da empresa do usuário logado:
+  // const { empresaId: currentEmpresaId } = useAuthContext(); // Ou useRestaurantContext(), etc.
+  // Por enquanto, mantenho o valor que você viu no log para debug, mas você DEVE substituir isso.
+  const currentEmpresaId = "67ac5adf-02a7-4c22-8ec3-68c463323e35"; 
+  console.log("AdminOrders: empresa_id sendo usado:", currentEmpresaId);
+
+
   const today = new Date();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: today,
     to: today
   });
 
-  // Função para carregar os pedidos
+  // Função para carregar os pedidos (ainda usa Firestore)
   const loadOrders = async (status: string, dateRange: DateRange | undefined) => {
-    console.log("loadOrders: Iniciando carregamento de pedidos...");
+    console.log("loadOrders: Iniciando carregamento de pedidos (Firestore)...");
     try {
       setLoading(true);
       setError(null);
@@ -98,39 +111,58 @@ const AdminOrders = () => {
     }
   };
 
-  // Função para buscar entregadores ativos
+  // Função para buscar entregadores ativos (AGORA USA SUPABASE)
   const fetchAvailableDeliverers = async () => {
-    console.log("fetchAvailableDeliverers: Iniciando busca de entregadores...");
+    console.log("fetchAvailableDeliverers: Iniciando busca de entregadores (Supabase)...");
     setLoadingDeliverers(true); // Ativa o estado de carregamento
     try {
-      if (!db) {
-        console.error("fetchAvailableDeliverers: Instância do Firestore (db) não disponível.");
-        throw new Error("Firestore DB not initialized.");
+      if (!supabase) {
+        console.error("fetchAvailableDeliverers: Instância do Supabase não disponível.");
+        toast({
+          title: "Erro de Configuração",
+          description: "Cliente Supabase não inicializado. Verifique suas variáveis de ambiente.",
+          variant: "destructive",
+        });
+        setLoadingDeliverers(false);
+        return;
       }
-      const usersRef = collection(db, "users");
-      const q = query(
-        usersRef,
-        where("role", "==", "entregador"),
-        where("status", "==", "ativo") // Assumindo que você tem um campo 'status' para o entregador
-      );
-      const querySnapshot = await getDocs(q);
-      const deliverers: Deliverer[] = [];
-      querySnapshot.forEach((doc) => {
-        deliverers.push({ id: doc.id, name: doc.data().name }); // Assumindo que o campo de nome é 'name'
-      });
+      
+      // Log do empresa_id que será usado na query
+      console.log("fetchAvailableDeliverers: Filtrando entregadores por empresa_id:", currentEmpresaId);
+
+      // Consulta ao Supabase
+      const { data, error } = await supabase
+        .from('users') // Nome da sua tabela de usuários no Supabase
+        .select('id, name') // Seleciona as colunas id e name
+        .eq('role', 'entregador') // Filtra por 'role' igual a 'entregador'
+        .eq('status', 'ativo') // Filtra por 'status' igual a 'ativo'
+        .eq('empresa_id', currentEmpresaId); // Filtra pelo empresa_id atual
+
+      if (error) {
+        console.error("fetchAvailableDeliverers: Erro ao buscar entregadores do Supabase:", error.message);
+        toast({
+          title: "Erro de Supabase",
+          description: `Erro ao buscar entregadores: ${error.message}`,
+          variant: "destructive",
+        });
+        throw error; // Lança o erro para ser capturado pelo catch
+      }
+
+      const deliverers: Deliverer[] = data || []; // Supabase retorna os dados diretamente em 'data'
       setAvailableDeliverers(deliverers);
+
       if (deliverers.length > 0) {
         setSelectedDelivererId(deliverers[0].id); // Seleciona o primeiro por padrão
-        console.log(`fetchAvailableDeliverers: ${deliverers.length} entregadores encontrados. Primeiro selecionado: ${deliverers[0].name}`);
+        console.log(`fetchAvailableDeliverers: ${deliverers.length} entregadores encontrados no Supabase. Primeiro selecionado: ${deliverers[0].name}`);
       } else {
         setSelectedDelivererId("");
-        console.log("fetchAvailableDeliverers: Nenhum entregador ativo encontrado.");
+        console.log("fetchAvailableDeliverers: Nenhum entregador ativo encontrado no Supabase para esta empresa.");
       }
     } catch (err) {
-      console.error("fetchAvailableDeliverers: Erro ao buscar entregadores:", err);
+      console.error("fetchAvailableDeliverers: Erro geral ao buscar entregadores:", err);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os entregadores disponíveis.",
+        description: "Não foi possível carregar os entregadores disponíveis. Verifique o console para mais detalhes.",
         variant: "destructive",
       });
     } finally {
@@ -143,7 +175,7 @@ const AdminOrders = () => {
     loadOrders(activeStatus, dateRange);
 
     if (dateRange?.from) {
-      console.log("useEffect: Configurando listener de snapshot para pedidos.");
+      console.log("useEffect: Configurando listener de snapshot para pedidos (Firestore).");
       const start = new Date(dateRange.from);
       start.setHours(0, 0, 0, 0);
 
@@ -165,10 +197,6 @@ const AdminOrders = () => {
         ordersQuery,
         (snapshot) => {
           console.log("onSnapshot: Mudança detectada nos pedidos.");
-          // Apenas recarrega se houver mudanças significativas ou se a dataRange for a mesma do carregamento inicial
-          // Para evitar recarregamentos desnecessários em cada pequena alteração que não afeta o filtro.
-          // Uma abordagem mais refinada seria atualizar apenas os pedidos específicos que mudaram.
-          // Por simplicidade, para o propósito deste listener, vamos disparar o loadOrders completo se houver alguma mudança.
           if (!snapshot.empty) {
             console.log("onSnapshot: Snapshot não vazio, recarregando pedidos.");
             loadOrders(activeStatus, dateRange);
@@ -568,7 +596,7 @@ const AdminOrders = () => {
             <DialogDescription>
               Selecione o entregador responsável por este pedido.
             </DialogDescription>
-          </DialogHeader>
+          </DialogDescription>
           <div className="py-4">
             <label htmlFor="deliverer-select" className="text-sm font-medium mb-2 block">
               Entregador:
@@ -585,7 +613,7 @@ const AdminOrders = () => {
                   <SelectValue placeholder="Selecione um entregador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* CORREÇÃO AQUI: Renderiza um div ou p em vez de SelectItem para a mensagem de "nenhum encontrado" */}
+                  {/* Renderiza as opções de entregadores disponíveis */}
                   {availableDeliverers.length > 0 ? (
                     availableDeliverers.map((deliverer) => (
                       <SelectItem key={deliverer.id} value={deliverer.id}>
@@ -601,7 +629,7 @@ const AdminOrders = () => {
               </Select>
             )}
             {availableDeliverers.length === 0 && !loadingDeliverers && (
-              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'users'.</p>
+              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'users' no Supabase para o 'empresa_id' atual.</p>
             )}
           </div>
           <DialogFooter>
