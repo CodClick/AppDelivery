@@ -28,11 +28,12 @@ const AdminDashboard = () => {
 
   const navigate = useNavigate();
   const { logOut } = useAuth();
-  const { user, loading: authUserLoading } = useAuthState(); // Obtém o estado de carregamento do useAuthState
+  // CORREÇÃO AQUI: Desestruturando 'currentUser' diretamente de useAuthState
+  const { currentUser, loading: authUserLoading } = useAuthState(); 
 
-  // Passa user.id apenas quando ele está disponível e authUserLoading é false
+  // Passa currentUser?.id apenas quando ele está disponível e authUserLoading é false
   const { empresa, loading: empresaDataLoading } = useEmpresa(
-    authUserLoading ? null : (user?.id ?? null) // Passa null se authUser ainda estiver carregando ou user.id for null
+    authUserLoading ? null : (currentUser?.id ?? null) // Usa currentUser.id
   );
 
   const [isDelivererModalOpen, setIsDelivererModalOpen] = useState(false);
@@ -44,13 +45,13 @@ const AdminDashboard = () => {
   useEffect(() => {
     console.log("AdminDashboard: Estado da empresa atualizado.");
     console.log("AdminDashboard: authUserLoading:", authUserLoading);
-    console.log("AdminDashboard: user:", user); // Loga o objeto user completo
-    console.log("AdminDashboard: user.id:", user?.id);
+    console.log("AdminDashboard: currentUser:", currentUser); // Loga o objeto currentUser completo
+    console.log("AdminDashboard: currentUser.id:", currentUser?.id);
     console.log("AdminDashboard: empresaDataLoading:", empresaDataLoading);
     console.log("AdminDashboard: empresa:", empresa);
     console.log("AdminDashboard: empresa.id:", empresa?.id);
     console.log("AdminDashboard: totalLoading:", totalLoading);
-  }, [user, empresa, empresaDataLoading, authUserLoading, totalLoading]);
+  }, [currentUser, empresa, empresaDataLoading, authUserLoading, totalLoading]);
 
 
   // Função para abrir o modal de entregadores, verificando se o empresaId está disponível
