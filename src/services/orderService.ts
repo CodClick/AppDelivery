@@ -98,7 +98,8 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       couponCode: orderData.couponCode || null,
       couponType: orderData.couponType || null,
       couponValue: orderData.couponValue || null,
-      entregador_id: orderData.entregador_id || null, // <--- Adicionado o entregador_id aqui
+      entregador_id: orderData.entregador_id || null,
+      empresa_id: orderData.empresa_id, // Garante que empresa_id seja salvo
       
       createdAt: new Date(),
       updatedAt: new Date()
@@ -137,7 +138,8 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       ...orderData,
       createdAt: formatTimestamp(orderData.createdAt),
       updatedAt: formatTimestamp(orderData.updatedAt),
-      entregador_id: orderData.entregador_id || null, // <--- Adicionado o entregador_id aqui
+      entregador_id: orderData.entregador_id || null,
+      empresa_id: orderData.empresa_id, // <--- Adicionado aqui
     } as Order;
   } catch (error) {
     console.error("Erro ao obter pedido:", error);
@@ -163,7 +165,8 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
-        entregador_id: data.entregador_id || null, // <--- Adicionado o entregador_id aqui
+        entregador_id: data.entregador_id || null,
+        empresa_id: data.empresa_id, // <--- Adicionado aqui
       } as Order;
     });
   } catch (error) {
@@ -212,7 +215,8 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
-        entregador_id: data.entregador_id || null, // <--- Adicionado o entregador_id aqui
+        entregador_id: data.entregador_id || null,
+        empresa_id: data.empresa_id, // <--- Adicionado aqui
       } as Order;
     });
     
@@ -269,7 +273,8 @@ export const getOrdersByDateRange = async (
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
-        entregador_id: data.entregador_id || null, // <--- Adicionado o entregador_id aqui
+        entregador_id: data.entregador_id || null,
+        empresa_id: data.empresa_id, // <--- Adicionado aqui
       } as Order;
     });
     
@@ -300,7 +305,7 @@ export const updateOrder = async (orderId: string, updates: UpdateOrderRequest):
     
     await updateDoc(orderRef, updateData);
     
-    return getOrderById(orderId); // Garante que o objeto retornado já inclui o entregador_id
+    return getOrderById(orderId);
   } catch (error) {
     console.error("Erro ao atualizar pedido:", error);
     throw error;
@@ -316,11 +321,5 @@ const formatTimestamp = (timestamp: any): string => {
     return timestamp.toDate().toISOString();
   }
   
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  
   return new Date().toISOString();
 };
-
-      
