@@ -20,7 +20,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
 import { useAuthState } from "@/hooks/useAuthState";
-import { useEmpresa } from "@/hooks/useEmpresa"; // Certifique-se de que useEmpresa está importado corretamente
+import { useEmpresa } from "@/hooks/useEmpresa";
 import DelivererManagementModal from "@/components/DelivererManagementModal";
 
 const AdminDashboard = () => {
@@ -28,27 +28,36 @@ const AdminDashboard = () => {
 
   const navigate = useNavigate();
   const { logOut } = useAuth();
-  const { user } = useAuthState();
-  // Assumindo que useEmpresa retorna 'empresa' e um estado 'loading'
-  const { empresa, loading: empresaLoading } = useEmpresa(user?.id ?? null);
+  const { user, loading: authUserLoading } = useAuthState(); // Obtém o estado de carregamento do useAuthState
+
+  // Passa user.id apenas quando ele está disponível e authUserLoading é false
+  const { empresa, loading: empresaDataLoading } = useEmpresa(
+    authUserLoading ? null : (user?.id ?? null) // Passa null se authUser ainda estiver carregando ou user.id for null
+  );
 
   const [isDelivererModalOpen, setIsDelivererModalOpen] = useState(false);
+
+  // Combina os estados de carregamento
+  const totalLoading = authUserLoading || empresaDataLoading;
 
   // Log para depuração do estado da empresa
   useEffect(() => {
     console.log("AdminDashboard: Estado da empresa atualizado.");
+    console.log("AdminDashboard: authUserLoading:", authUserLoading);
+    console.log("AdminDashboard: user:", user); // Loga o objeto user completo
     console.log("AdminDashboard: user.id:", user?.id);
-    console.log("AdminDashboard: empresaLoading:", empresaLoading);
+    console.log("AdminDashboard: empresaDataLoading:", empresaDataLoading);
     console.log("AdminDashboard: empresa:", empresa);
     console.log("AdminDashboard: empresa.id:", empresa?.id);
-  }, [user, empresa, empresaLoading]);
+    console.log("AdminDashboard: totalLoading:", totalLoading);
+  }, [user, empresa, empresaDataLoading, authUserLoading, totalLoading]);
 
 
   // Função para abrir o modal de entregadores, verificando se o empresaId está disponível
   const handleOpenDelivererModal = () => {
-    if (empresaLoading) {
-      console.log("AdminDashboard: Empresa ainda carregando, não abrindo modal.");
-      // Opcional: mostrar um toast informando que os dados da empresa ainda estão carregando
+    if (totalLoading) { // Usa totalLoading combinado
+      console.log("AdminDashboard: Carregando dados, não abrindo modal.");
+      // Opcional: mostrar um toast informando que os dados ainda estão carregando
       return;
     }
     if (!empresa?.id) {
@@ -173,9 +182,9 @@ const AdminDashboard = () => {
             <Button
               onClick={handleOpenDelivererModal} // Chama a nova função
               className="w-full"
-              disabled={empresaLoading || !empresa?.id} // Desabilita o botão enquanto carrega ou se empresaId não estiver disponível
+              disabled={totalLoading || !empresa?.id} // Desabilita o botão enquanto carrega ou se empresaId não estiver disponível
             >
-              {empresaLoading ? "Carregando..." : "Acessar Entregadores"}
+              {totalLoading ? "Carregando..." : "Acessar Entregadores"}
             </Button>
           </CardContent>
         </Card>
