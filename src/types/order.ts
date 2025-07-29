@@ -1,61 +1,111 @@
-
-export interface OrderItem {
-  menuItemId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  selectedVariations?: SelectedVariationGroup[];
-  priceFrom?: boolean;
-}
-
-export interface SelectedVariationGroup {
-  groupId: string;
-  groupName: string;
-  variations: SelectedVariation[];
-}
-
-export interface SelectedVariation {
-  variationId: string;
-  quantity: number;
-  name?: string;
-  additionalPrice?: number;
-}
+// src/types/order.ts
+import { Timestamp } from "firebase/firestore";
 
 export interface Order {
   id: string;
-  userId?: string;
   customerName: string;
   customerPhone: string;
-  address: string;
-  paymentMethod: "card" | "cash" | "pix" | "payroll_discount";
-  observations?: string;
-  items: OrderItem[];
-  status: "pending" | "confirmed" | "preparing" | "ready" | "delivering" | "received" | "delivered" | "cancelled" | "to_deduct" | "paid";
-  paymentStatus?: "a_receber" | "recebido";
+  customerAddress: {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  items: Array<{
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    notes?: string;
+  }>;
   total: number;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-  cancellationReason?: string;
-  entregador_id?: string; 
+  status: "pending" | "accepted" | "confirmed" | "preparing" | "ready" | "delivering" | "received" | "delivered" | "cancelled" | "to_deduct" | "paid";
+  paymentMethod: string;
+  paymentStatus: "a_receber" | "recebido";
+  deliveryFee: number;
+  notes?: string;
+  createdAt: string | Timestamp;
+  updatedAt?: string | Timestamp;
+  discountAmount?: number;
+  couponCode?: string;
+  couponType?: "percentage" | "fixed";
+  couponValue?: number;
+  entregador_id?: string; // <--- Adicione esta linha aqui!
 }
 
+// Também atualize CreateOrderRequest e UpdateOrderRequest
 export interface CreateOrderRequest {
   customerName: string;
   customerPhone: string;
-  address: string;
-  paymentMethod: "card" | "cash" | "pix" | "payroll_discount";
-  observations?: string;
-  items: {
+  address: {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  items: Array<{
     menuItemId: string;
     name: string;
     price: number;
     quantity: number;
-    selectedVariations?: SelectedVariationGroup[];
+    selectedVariations?: Array<{
+      groupId: string;
+      groupName?: string;
+      variations: Array<{
+        variationId: string;
+        name?: string;
+        quantity?: number;
+        additionalPrice?: number;
+      }>;
+    }>;
     priceFrom?: boolean;
-  }[];
+  }>;
+  paymentMethod: string;
+  observations?: string;
+  totalAmount?: number; // O total final com desconto
+  discountAmount?: number;
+  couponCode?: string;
+  couponType?: "percentage" | "fixed";
+  couponValue?: number;
+  entregador_id?: string; // <--- Adicione esta linha aqui!
 }
 
 export interface UpdateOrderRequest {
-  status?: "pending" | "confirmed" | "preparing" | "ready" | "delivering" | "received" | "delivered" | "cancelled" | "to_deduct" | "paid";
+  status?: "pending" | "accepted" | "confirmed" | "preparing" | "ready" | "delivering" | "received" | "delivered" | "cancelled" | "to_deduct" | "paid";
   paymentStatus?: "a_receber" | "recebido";
+  cancellationReason?: string;
+  entregador_id?: string; // <--- Adicione esta linha aqui!
+  // Outros campos que podem ser atualizados
+  customerName?: string;
+  customerPhone?: string;
+  address?: {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  items?: Array<{
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    notes?: string;
+  }>;
+  total?: number;
+  paymentMethod?: string;
+  deliveryFee?: number;
+  notes?: string;
+  discountAmount?: number;
+  couponCode?: string;
+  couponType?: "percentage" | "fixed";
+  couponValue?: number;
 }
