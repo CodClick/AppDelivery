@@ -36,6 +36,7 @@ export interface Order {
   createdAt: Date | string;
   updatedAt: Date | string;
   cancellationReason?: string;
+  entregador_id?: string; 
 }
 
 export interface CreateOrderRequest {
