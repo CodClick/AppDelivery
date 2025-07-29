@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, onSnapshot, orderBy, Timestamp, getDocs } from "firebase/firestore"; // Adicionado getDocs
+import { collection, query, where, onSnapshot, orderBy, Timestamp, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Order } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
@@ -203,12 +203,12 @@ const AdminOrders = () => {
       console.log("AdminOrders - Atualizando pedido:", { orderId, newStatus, paymentStatus });
 
       // --- Lógica para seleção de entregador ---
+      // Verifica se o novo status é "delivering" E o status atual do pedido selecionado é "ready"
+      // (Isso garante que o modal só abra na transição específica)
       if (newStatus === "delivering" && selectedOrder?.status === "ready") {
-        // Se o status for para "em rota de entrega" e o status atual for "pronto para entrega",
-        // abre o modal de seleção de entregador.
         setOrderToAssignDeliverer(selectedOrder); // Guarda o pedido para atribuição
         await fetchAvailableDeliverers(); // Busca os entregadores
-        setIsDelivererSelectionModalOpen(true);
+        setIsDelivererSelectionModalOpen(true); // Abre o modal de seleção
         return; // Interrompe a atualização normal do status por enquanto
       }
       // --- Fim da lógica para seleção de entregador ---
@@ -540,5 +540,4 @@ const AdminOrders = () => {
                 <SelectValue placeholder="Selecione um entregador" />
               </SelectTrigger>
               <SelectContent>
-                {availableDeliverers.length > 0 ? (
-     
+                {availableDelive
