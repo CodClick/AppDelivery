@@ -1,5 +1,3 @@
-// src/pages/AdminOrders.tsx
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 // Importações do Firestore (mantidas para a lógica de pedidos)
@@ -67,6 +65,25 @@ const AdminOrders = () => {
     to: today
   });
 
+  // Função para formatar o endereço estruturado
+  const formatAddress = (address: Order['address']) => {
+    if (!address) return "Endereço não disponível";
+    // Garante que as propriedades existem antes de acessá-las
+    const street = address.street || '';
+    const number = address.number || '';
+    const complement = address.complement || '';
+    const neighborhood = address.neighborhood || '';
+    const city = address.city || '';
+    const state = address.state || '';
+    const zipCode = address.zipCode || '';
+
+    let formattedAddress = `${street}, ${number}`;
+    if (complement) formattedAddress += `, ${complement}`;
+    formattedAddress += ` - ${neighborhood}, ${city} - ${state}`;
+    if (zipCode) formattedAddress += ` (${zipCode})`;
+    return formattedAddress;
+  };
+
   // Função para carregar os pedidos (ainda usa Firestore)
   const loadOrders = async (status: string, dateRange: DateRange | undefined) => {
     console.log("loadOrders: Iniciando carregamento de pedidos (Firestore)...");
@@ -119,7 +136,7 @@ const AdminOrders = () => {
         setLoadingDeliverers(false);
         return;
       }
-      
+
       // Consulta ao Supabase com filtros relaxados para depuração
       // Temporariamente, estamos removendo os filtros 'role' e 'status_entregador'
       // para ver se algum usuário é retornado para o empresa_id.
@@ -255,7 +272,7 @@ const AdminOrders = () => {
       // --- Lógica para seleção de entregador ---
       if (newStatus === "delivering" && selectedOrder?.status === "ready") {
         console.log("handleUpdateOrderStatus: Transição para 'delivering' detectada. Abrindo modal de seleção de entregador.");
-        
+
         // NOVO LOG: Verifica o empresa_id do pedido selecionado
         console.log("handleUpdateOrderStatus: selectedOrder.empresa_id para busca de entregadores:", selectedOrder?.empresa_id);
 
@@ -421,8 +438,19 @@ const AdminOrders = () => {
     }
   };
 
-  const formatFullDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatFullDate = (dateString: string | Date | Timestamp) => { // Ajustado para aceitar Timestamp
+    let date: Date;
+
+    if (dateString instanceof Timestamp) {
+      date = dateString.toDate();
+    } else if (typeof dateString === 'string') {
+      date = new Date(dateString);
+    } else {
+      date = dateString;
+    }
+
+    if (isNaN(date.getTime())) return "Data inválida";
+
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -494,60 +522,103 @@ const AdminOrders = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-        {orders.map((order) => (
-          <Card key={order.id} className="overflow-hidden">
-            <CardHeader className="bg-gray-50 py-4">
-              <div className="flex justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Pedido #{order.id.substring(0, 6)}
-                  </p>
-                  <p className="text-sm font-medium text-gray-700">
-                    {formatFullDate(order.createdAt as string)}
-                  </p>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs flex items-center ${getStatusColor(order.status)}`}>
-                  {translateStatus(order.status)}
-                </span>
-              </div>
-              <div className="mt-2">
-                <div className="font-semibold">{order.customerName}</div>
-                <div className="text-sm text-gray-500">{order.customerPhone}</div>
-                {order.entregador_id && (
-                  <div className="text-xs text-gray-600 mt-1">
-                    Entregador: {availableDeliverers.find(d => d.id === order.entregador_id)?.nome || order.entregador_id} {/* Alterado para 'nome' */}
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="py-4">
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Itens: {order.items.length}</p>
-                <p className="font-medium">Total: R$ {order.total.toFixed(2)}</p>
-                <Button
-                  onClick={() => handleViewOrder(order)}
-                  variant="outline"
-                  className="w-full mt-2"
-                >
-                  Ver detalhes
-                </Button>
-                {/* Botão de "Marcar como Recebido" só aparece se o status não for "received" ou "delivered" */}
-                {order.status !== "received" && order.status !== "delivered" && (
-                  <Button
-                    onClick={() => {
-                      const novoStatus = order.status === "delivering" ? "delivered" : "delivered";
-                      handleUpdateOrderStatus(order.id, novoStatus);
-                    }}
-                    variant="secondary"
-                    className="w-full mt-2"
-                  >
-                    ✅ Marcar como Recebido
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {loading ? (
+          <p className="col-span-full text-center text-gray-500">Carregando pedidos...</p>
+        ) : error ? (
+          <div className="col-span-full text-center text-red-500">
+            <p>{error}</p>
+            <Button onClick={handleRetryLoad} className="mt-2">Tentar Novamente</Button>
+          </div>
+        ) : orders.length === 0 ? (
+          <p className="col-span-full text-center text-gray-500">Nenhum pedido encontrado para o período selecionado.</p>
+        ) : (
+          orders.map((order) => {
+            try {
+              return (
+                <Card key={order.id} className="overflow-hidden">
+                  <CardHeader className="bg-gray-50 py-4">
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Pedido #{order.id.substring(0, 6)}
+                        </p>
+                        <p className="text-sm font-medium text-gray-700">
+                          {formatFullDate(order.createdAt as string)}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs flex items-center ${getStatusColor(order.status)}`}>
+                        {translateStatus(order.status)}
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-semibold">{order.customerName}</div>
+                      <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                      {/* Exibindo o endereço formatado na listagem */}
+                      <div className="text-xs text-gray-600 mt-1">
+                        Endereço: {formatAddress(order.address)}
+                      </div>
+                      {order.entregador_id && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          Entregador: {availableDeliverers.find(d => d.id === order.entregador_id)?.nome || order.entregador_id}
+                        </div>
+                      )}
+                      {/* NOVO: Exibe o horário de entrega finalizada se o status for 'delivered' */}
+                      {order.status === "delivered" && order.deliveredAt && (
+                        <div className="text-xs text-green-700 font-semibold mt-1">
+                          Entrega Finalizada: {formatFullDate(order.deliveredAt)}
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Itens: {order.items.length}</p>
+                      <p className="font-medium">Total: R$ {order.total.toFixed(2)}</p>
+                      <Button
+                        onClick={() => handleViewOrder(order)}
+                        variant="outline"
+                        className="w-full mt-2"
+                      >
+                        Ver detalhes
+                      </Button>
+                      {/* Botão de "Marcar como Recebido" só aparece se o status não for "received" ou "delivered" */}
+                      {order.status !== "received" && order.status !== "delivered" && (
+                        <Button
+                          onClick={() => {
+                            const novoStatus = order.status === "delivering" ? "delivered" : "delivered";
+                            handleUpdateOrderStatus(order.id, novoStatus);
+                          }}
+                          variant="secondary"
+                          className="w-full mt-2"
+                        >
+                          ✅ Marcar como Recebido
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            } catch (renderError: any) {
+              console.error(`AdminOrders: Erro ao renderizar pedido ${order.id}:`, renderError);
+              console.error("Pedido que causou o erro:", order);
+              toast({
+                title: "Erro de Renderização",
+                description: `Não foi possível exibir o pedido ${order.id.substring(0,6)}. Verifique o console para mais detalhes.`,
+                variant: "destructive",
+              });
+              return (
+                <Card key={order.id} className="overflow-hidden bg-red-50 border border-red-200">
+                  <CardHeader>
+                    <CardTitle className="text-red-700">Erro ao Carregar Pedido #{order.id.substring(0,6)}</CardTitle>
+                    <CardDescription className="text-red-600">
+                      Ocorreu um erro ao exibir os detalhes deste pedido. Consulte o console para mais informações.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              );
+            }
+          })
+        )}
       </div>
 
       {/* Summary Footer */}
@@ -630,7 +701,7 @@ const AdminOrders = () => {
                   {availableDeliverers.length > 0 ? (
                     availableDeliverers.map((deliverer) => (
                       <SelectItem key={deliverer.id} value={deliverer.id}>
-                        {deliverer.nome} {/* Alterado para 'nome' */}
+                        {deliverer.nome}
                       </SelectItem>
                     ))
                   ) : (
