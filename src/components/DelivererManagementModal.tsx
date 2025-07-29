@@ -34,10 +34,10 @@ interface DelivererManagementModalProps {
   empresaId: string | null; // O ID da empresa do admin logado
 }
 
-const DelivererManagementModal: React.FC<DelivererManagementModalModalProps> = ({ isOpen, onClose, empresaId }) => {
+const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isOpen, onClose, empresaId }) => {
   const { toast } = useToast();
   const [deliverers, setDeliverers] = useState<Deliverer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Estado de carregamento
   const [isAddDelivererFormOpen, setIsAddDelivererFormOpen] = useState(false); // Estado para o formulário de adicionar
   const [newDelivererData, setNewDelivererData] = useState<Partial<Deliverer & { email: string; password: string }>>({
     nome: "",
@@ -59,7 +59,7 @@ const DelivererManagementModal: React.FC<DelivererManagementModalModalProps> = (
     if (!empresaId) {
       console.warn("fetchDeliverers: empresaId não fornecido. Não é possível buscar entregadores.");
       setDeliverers([]);
-      setLoading(false);
+      setLoading(false); // Finaliza o loading se userId for nulo
       return;
     }
 
@@ -97,12 +97,9 @@ const DelivererManagementModal: React.FC<DelivererManagementModalModalProps> = (
   useEffect(() => {
     console.log("useEffect: Disparado no DelivererManagementModal. isOpen:", isOpen, "empresaId:", empresaId, "loading atual:", loading);
     if (isOpen && empresaId) {
-      // Adicionado uma pequena verificação para evitar chamadas duplicadas se já estiver carregando
-      if (!loading) { // Só chama se não estiver já carregando
-        fetchDeliverers();
-      } else {
-        console.log("useEffect: Já está carregando ou empresaId não disponível, pulando fetch inicial.");
-      }
+      // CORREÇÃO AQUI: Chamada direta de fetchDeliverers.
+      // A lógica de `setLoading(true)` e `setLoading(false)` já está dentro de fetchDeliverers.
+      fetchDeliverers(); 
     } else if (!isOpen) {
         // Se o modal fechar, resetar o estado de loading para a próxima abertura
         setLoading(true);
