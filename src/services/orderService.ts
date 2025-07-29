@@ -1,3 +1,5 @@
+// src/services/orderService.ts
+
 import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, where, orderBy, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Order, CreateOrderRequest, UpdateOrderRequest } from "@/types/order";
@@ -101,9 +103,10 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       entregador_id: orderData.entregador_id || null,
       // CORREÇÃO AQUI: Garante que empresa_id seja uma string ou null, nunca undefined
       empresa_id: orderData.empresa_id || null, 
-      
-      createdAt: new Date(),
-      updatedAt: new Date()
+      paymentStatus: orderData.paymentStatus || "a_receber", // Garante que paymentStatus seja salvo
+
+      createdAt: serverTimestamp(), // Usa serverTimestamp
+      updatedAt: serverTimestamp() // Usa serverTimestamp
     };
 
     console.log("\n=== SALVANDO PEDIDO NO FIRESTORE ===");
@@ -113,11 +116,17 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
 
     console.log("Pedido salvo com ID:", docRef.id);
 
+    // Para retornar o objeto Order completo com ID e Timestamps convertidos
+    const newOrderSnap = await getDoc(docRef);
+    const newOrderData = newOrderSnap.data() as Record<string, any>;
+
     return {
-      id: docRef.id,
-      ...orderToSave,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      id: newOrderSnap.id,
+      ...newOrderData,
+      createdAt: formatTimestamp(newOrderData.createdAt),
+      updatedAt: formatTimestamp(newOrderData.updatedAt),
+      // deliveredAt não estará presente na criação, mas é bom manter a consistência
+      deliveredAt: formatTimestamp(newOrderData.deliveredAt) || undefined, 
     } as Order;
   } catch (error) {
     console.error("Erro ao criar pedido no service:", error);
@@ -139,8 +148,9 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       ...orderData,
       createdAt: formatTimestamp(orderData.createdAt),
       updatedAt: formatTimestamp(orderData.updatedAt),
+      deliveredAt: formatTimestamp(orderData.deliveredAt) || undefined, // Mapeia deliveredAt
       entregador_id: orderData.entregador_id || null,
-      empresa_id: orderData.empresa_id || null, // <--- Adicionado aqui para leitura
+      empresa_id: orderData.empresa_id || null,
     } as Order;
   } catch (error) {
     console.error("Erro ao obter pedido:", error);
@@ -151,9 +161,9 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 // Obter pedidos por número de telefone
 export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
   try {
-    const ordersCollection = collection(db, ORDERS_COLLECTION);
+    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); // Renomeado para evitar conflito
     const q = query( 
-      ordersCollection, 
+      ordersCollectionRef, 
       where("customerPhone", "==", phone),
       orderBy("createdAt", "desc")
     );
@@ -166,8 +176,9 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
+        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, // Mapeia deliveredAt
         entregador_id: data.entregador_id || null,
-        empresa_id: data.empresa_id || null, // <--- Adicionado aqui para leitura
+        empresa_id: data.empresa_id || null,
       } as Order;
     });
   } catch (error) {
@@ -186,18 +197,21 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
     console.log("Buscando pedidos para hoje:", today.toISOString());
     console.log("Status filtro:", status);
     
-    const ordersCollection = collection(db, ORDERS_COLLECTION);
+    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); // Renomeado para evitar conflito
     let q;
     
+    // A lógica de filtro por status aqui está um pouco redundante,
+    // o filtro WHERE pode ser adicionado diretamente se status for diferente de "all"
     if (status && status !== "all") {
       q = query(
-        ordersCollection,
+        ordersCollectionRef,
         where("createdAt", ">=", todayTimestamp),
+        where("status", "==", status), // Adicionado filtro de status diretamente na query
         orderBy("createdAt", "desc")
       );
     } else {
       q = query(
-        ordersCollection,
+        ordersCollectionRef,
         where("createdAt", ">=", todayTimestamp),
         orderBy("createdAt", "desc")
       );
@@ -209,24 +223,18 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
     
     console.log("Resultados encontrados (total):", ordersSnapshot.size);
     
-    let orders = ordersSnapshot.docs.map(doc => {
+    return ordersSnapshot.docs.map(doc => {
       const data = doc.data() as Record<string, any>;
       return {
         id: doc.id,
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
+        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, // Mapeia deliveredAt
         entregador_id: data.entregador_id || null,
-        empresa_id: data.empresa_id || null, // <--- Adicionado aqui para leitura
+        empresa_id: data.empresa_id || null,
       } as Order;
     });
-    
-    if (status && status !== "all") {
-      orders = orders.filter(order => order.status === status);
-      console.log(`Resultados filtrados por status '${status}':`, orders.length);
-    }
-    
-    return orders;
   } catch (error) {
     console.error("Erro ao obter pedidos do dia:", error);
     throw error;
@@ -252,14 +260,18 @@ export const getOrdersByDateRange = async (
     console.log("Buscando pedidos no intervalo:", start.toISOString(), "até", end.toISOString());
     console.log("Status filtro:", status);
     
-    const ordersCollection = collection(db, ORDERS_COLLECTION);
+    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); // Renomeado para evitar conflito
     
-    const q = query(
-      ordersCollection,
+    let q = query(
+      ordersCollectionRef,
       where("createdAt", ">=", startTimestamp),
       where("createdAt", "<=", endTimestamp),
       orderBy("createdAt", "desc")
     );
+    
+    if (status && status !== "all") {
+      q = query(q, where("status", "==", status)); // Adicionado filtro de status diretamente na query
+    }
     
     console.log("Executando consulta ao Firestore...");
     
@@ -267,24 +279,18 @@ export const getOrdersByDateRange = async (
     
     console.log("Resultados encontrados (total):", ordersSnapshot.size);
     
-    let orders = ordersSnapshot.docs.map(doc => {
+    return ordersSnapshot.docs.map(doc => {
       const data = doc.data() as Record<string, any>;
       return {
         id: doc.id,
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
+        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, // Mapeia deliveredAt
         entregador_id: data.entregador_id || null,
-        empresa_id: data.empresa_id || null, // <--- Adicionado aqui para leitura
+        empresa_id: data.empresa_id || null,
       } as Order;
     });
-    
-    if (status && status !== "all") {
-      orders = orders.filter(order => order.status === status);
-      console.log(`Resultados filtrados por status '${status}':`, orders.length);
-    }
-    
-    return orders;
   } catch (error) {
     console.error("Erro ao obter pedidos por intervalo de datas:", error);
     throw error;
@@ -295,18 +301,43 @@ export const getOrdersByDateRange = async (
 export const updateOrder = async (orderId: string, updates: UpdateOrderRequest): Promise<Order | null> => {
   try {
     const orderRef = doc(db, ORDERS_COLLECTION, orderId);
-    const orderSnap = await getDoc(orderRef);
+    const currentOrderSnap = await getDoc(orderRef);
     
-    if (!orderSnap.exists()) return null;
+    if (!currentOrderSnap.exists()) return null;
     
-    const updateData = {
+    const currentOrder = currentOrderSnap.data() as Order; // Obtém os dados atuais do pedido
+
+    const dataToUpdate: any = {
       ...updates,
-      updatedAt: new Date()
+      updatedAt: serverTimestamp() // Usa serverTimestamp para updatedAt
     };
+
+    // Se o status está sendo alterado para 'delivered', registra o timestamp
+    if (updates.status === "delivered" && currentOrder.status !== "delivered") {
+      dataToUpdate.deliveredAt = serverTimestamp();
+      console.log(`updateOrder: Registrando deliveredAt para o pedido ${orderId}.`);
+    } else if (updates.status !== "delivered" && currentOrder.deliveredAt) {
+      // Se o status for alterado de 'delivered' para outro, remove deliveredAt (opcional, mas boa prática)
+      // Isso é importante se você quiser que deliveredAt só exista quando o status for 'delivered'
+      dataToUpdate.deliveredAt = null; 
+      console.log(`updateOrder: Removendo deliveredAt para o pedido ${orderId}.`);
+    }
     
-    await updateDoc(orderRef, updateData);
+    await updateDoc(orderRef, dataToUpdate);
     
-    return getOrderById(orderId);
+    // Retorna o pedido atualizado para manter o estado no frontend
+    const updatedDocSnap = await getDoc(orderRef);
+    const updatedData = updatedDocSnap.data() as Record<string, any>;
+
+    return {
+      id: updatedDocSnap.id,
+      ...updatedData,
+      createdAt: formatTimestamp(updatedData.createdAt),
+      updatedAt: formatTimestamp(updatedData.updatedAt),
+      deliveredAt: formatTimestamp(updatedData.deliveredAt) || undefined, // Mapeia deliveredAt
+      entregador_id: updatedData.entregador_id || null,
+      empresa_id: updatedData.empresa_id || null,
+    } as Order;
   } catch (error) {
     console.error("Erro ao atualizar pedido:", error);
     throw error;
@@ -314,13 +345,19 @@ export const updateOrder = async (orderId: string, updates: UpdateOrderRequest):
 };
 
 // Função auxiliar para formatar timestamps do Firestore
-const formatTimestamp = (timestamp: any): string => {
-  if (!timestamp) return new Date().toISOString();
-  if (typeof timestamp === 'string') return timestamp;
-  
-  if (timestamp && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
+const formatTimestamp = (timestamp: any): string | Timestamp | Date | undefined => {
+  if (!timestamp) return undefined; // Retorna undefined se não houver timestamp
+
+  if (timestamp instanceof Timestamp) {
+    return timestamp.toDate(); // Retorna um objeto Date
+  }
+  if (typeof timestamp === 'string') {
+    const date = new Date(timestamp);
+    return isNaN(date.getTime()) ? undefined : date; // Tenta converter string para Date
+  }
+  if (timestamp instanceof Date) {
+    return timestamp; // Já é um objeto Date
   }
   
-  return new Date().toISOString();
+  return undefined; // Para qualquer outro caso inesperado
 };
