@@ -23,17 +23,8 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
     console.log("=== CRIANDO PEDIDO NO SERVICE ===");
     console.log("Dados do pedido recebidos (orderData):", JSON.stringify(orderData, null, 2));
 
-    // A partir de agora, o 'totalAmount' já vem calculado do frontend (finalTotal do CartContext)
-    // O backend pode (e deve) ainda recalcular para fins de segurança e validação,
-    // mas usaremos o que veio para salvar, presumindo que o front está correto.
-
-    // Recalcular o total bruto dos itens (basePrice + variations) para fins de log/segurança se necessário
-    // OBS: O `finalTotal` já é o `totalAmount` que o checkout está enviando.
-    // Vamos manter a lógica de processamento dos itens para garantir que as variações salvas
-    // contenham todos os dados necessários (nome, preço adicional) mesmo se não vierem do front.
-    let calculatedSubtotal = 0; // Este é o total bruto dos itens
+    let calculatedSubtotal = 0;
     const orderItems = await Promise.all(orderData.items.map(async item => {
-      // Se o item tem preço "a partir de", o preço base para cálculo é 0
       const basePrice = item.priceFrom ? 0 : (item.price || 0);
       let currentItemCalculatedTotal = basePrice * item.quantity;
 
@@ -50,7 +41,6 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
             for (const variation of group.variations) {
               let additionalPrice = variation.additionalPrice;
 
-              // Se não tiver o preço, buscar no serviço (garante consistência no backend)
               if (additionalPrice === undefined && variation.variationId) {
                 additionalPrice = await getVariationPrice(variation.variationId);
               }
@@ -62,7 +52,6 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
                 additionalPrice: additionalPrice || 0
               };
 
-              // Calcular custo da variação para o subtotal
               const variationCost = (additionalPrice || 0) * (variation.quantity || 1);
               if (variationCost > 0) {
                 currentItemCalculatedTotal += variationCost * item.quantity;
@@ -78,19 +67,18 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
         }
       }
 
-      calculatedSubtotal += currentItemCalculatedTotal; // Soma ao subtotal bruto
+      calculatedSubtotal += currentItemCalculatedTotal;
 
       return {
         menuItemId: item.menuItemId,
         name: item.name,
-        price: item.price || 0, // Preço original do item (sem variações)
+        price: item.price || 0,
         quantity: item.quantity,
         selectedVariations: processedVariations,
         priceFrom: item.priceFrom || false
       };
     }));
 
-    // Logs para comparação (opcional, pode ser removido em produção)
     console.log(`Subtotal calculado pelo service (bruto): R$ ${calculatedSubtotal.toFixed(2)}`);
     console.log(`Total final recebido do frontend (totalAmount): R$ ${orderData.totalAmount?.toFixed(2)}`);
     console.log(`Desconto recebido do frontend (discountAmount): R$ ${orderData.discountAmount?.toFixed(2)}`);
@@ -104,16 +92,14 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       observations: orderData.observations || "",
       items: orderItems,
       status: "pending",
-      // Salva o total final (com desconto) que veio do frontend
-      total: orderData.totalAmount || calculatedSubtotal, // Usa o totalAmount do front, ou recalcula como fallback
+      total: orderData.totalAmount || calculatedSubtotal,
       
-      // --- NOVOS CAMPOS DO CUPOM E DESCONTO ---
       discountAmount: orderData.discountAmount || 0,
       couponCode: orderData.couponCode || null,
       couponType: orderData.couponType || null,
       couponValue: orderData.couponValue || null,
-      // --- FIM DOS NOVOS CAMPOS ---
-
+      entregador_id: orderData.entregador_id || null, // <--- Adicionado o entregador_id aqui
+      
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -128,19 +114,14 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
     return {
       id: docRef.id,
       ...orderToSave,
-      createdAt: new Date().toISOString(), // Converte para string ISO para consistência
-      updatedAt: new Date().toISOString()  // Converte para string ISO para consistência
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     } as Order;
   } catch (error) {
     console.error("Erro ao criar pedido no service:", error);
     throw error;
   }
 };
-
-// ... (restante das funções: getOrderById, getOrdersByPhone, getTodayOrders, getOrdersByDateRange, updateOrder, formatTimestamp)
-// Elas não precisam de grandes alterações a não ser que você queira que elas também retornem os campos de cupom.
-// Se você for usar esses campos nos dashboards de pedidos, lembre-se de incluí-los na interface 'Order'.
-// Por enquanto, apenas a função createOrder é a mais crítica para receber os dados.
 
 // Obter um pedido pelo ID
 export const getOrderById = async (orderId: string): Promise<Order | null> => {
@@ -155,13 +136,8 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       id: orderSnap.id,
       ...orderData,
       createdAt: formatTimestamp(orderData.createdAt),
-      updatedAt: formatTimestamp(orderData.updatedAt)
-      // Se você quiser que esses campos sejam retornados aqui,
-      // a interface Order (em @/types/order) precisa ter esses campos.
-      // Ex: discountAmount: orderData.discountAmount || 0,
-      //     couponCode: orderData.couponCode || null,
-      //     couponType: orderData.couponType || null,
-      //     couponValue: orderData.couponValue || null,
+      updatedAt: formatTimestamp(orderData.updatedAt),
+      entregador_id: orderData.entregador_id || null, // <--- Adicionado o entregador_id aqui
     } as Order;
   } catch (error) {
     console.error("Erro ao obter pedido:", error);
@@ -186,8 +162,8 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
         id: doc.id,
         ...data,
         createdAt: formatTimestamp(data.createdAt),
-        updatedAt: formatTimestamp(data.updatedAt)
-        // Adicione aqui se quiser retornar os campos de cupom também
+        updatedAt: formatTimestamp(data.updatedAt),
+        entregador_id: data.entregador_id || null, // <--- Adicionado o entregador_id aqui
       } as Order;
     });
   } catch (error) {
@@ -235,8 +211,8 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
         id: doc.id,
         ...data,
         createdAt: formatTimestamp(data.createdAt),
-        updatedAt: formatTimestamp(data.updatedAt)
-        // Adicione aqui se quiser retornar os campos de cupom também
+        updatedAt: formatTimestamp(data.updatedAt),
+        entregador_id: data.entregador_id || null, // <--- Adicionado o entregador_id aqui
       } as Order;
     });
     
@@ -292,8 +268,8 @@ export const getOrdersByDateRange = async (
         id: doc.id,
         ...data,
         createdAt: formatTimestamp(data.createdAt),
-        updatedAt: formatTimestamp(data.updatedAt)
-        // Adicione aqui se quiser retornar os campos de cupom também
+        updatedAt: formatTimestamp(data.updatedAt),
+        entregador_id: data.entregador_id || null, // <--- Adicionado o entregador_id aqui
       } as Order;
     });
     
@@ -324,7 +300,7 @@ export const updateOrder = async (orderId: string, updates: UpdateOrderRequest):
     
     await updateDoc(orderRef, updateData);
     
-    return getOrderById(orderId);
+    return getOrderById(orderId); // Garante que o objeto retornado já inclui o entregador_id
   } catch (error) {
     console.error("Erro ao atualizar pedido:", error);
     throw error;
@@ -346,3 +322,5 @@ const formatTimestamp = (timestamp: any): string => {
   
   return new Date().toISOString();
 };
+
+      
