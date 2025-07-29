@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch"; // Importe o componente Switch
 import { useEmpresa } from "@/hooks/useEmpresa";
 
 export default function AdminCupons() {
+  const { empresa, loading, error } = useEmpresa(); // Adicione esta linha
+  const navigate = useNavigate();
   const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
