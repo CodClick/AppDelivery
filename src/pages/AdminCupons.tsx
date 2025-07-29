@@ -226,7 +226,6 @@ export default function AdminCupons() {
     <div className="p-6 max-w-4xl mx-auto font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Cupons de Desconto</h1>
-        <p className="text-gray-600 text-lg mt-1">{empresa.nome}</p>
         <div className="flex gap-2 items-center">
           <Button
             onClick={() => navigate("/admin-dashboard")}
