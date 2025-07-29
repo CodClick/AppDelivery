@@ -540,4 +540,37 @@ const AdminOrders = () => {
                 <SelectValue placeholder="Selecione um entregador" />
               </SelectTrigger>
               <SelectContent>
-                {availableDelive
+                {/* Renderiza as opções de entregadores disponíveis */}
+                {availableDeliverers.length > 0 ? (
+                  availableDeliverers.map((deliverer) => (
+                    <SelectItem key={deliverer.id} value={deliverer.id}>
+                      {deliverer.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="" disabled>
+                    Nenhum entregador ativo disponível.
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDelivererSelectionModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAssignDelivererAndDeliver}
+              disabled={!selectedDelivererId || availableDeliverers.length === 0}
+            >
+              Atribuir e Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default AdminOrders;
+
