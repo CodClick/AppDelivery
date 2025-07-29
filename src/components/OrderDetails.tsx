@@ -1,5 +1,3 @@
-// src/components/OrderDetails.tsx
-
 import React, { useState } from "react";
 import { Order } from "@/types/order";
 import { Button } from "@/components/ui/button";
@@ -43,6 +41,16 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { getNextStatusOptions, hasReceivedPayment } from "@/services/orderStatusService";
+import { Separator } from "@/components/ui/separator"; // Certifique-se de que Separator está importado
+import { Label } from "@/components/ui/label"; // Certifique-se de que Label está importado
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Certifique-se de que Select está importado
+
 
 interface OrderDetailsProps {
   order: Order;
@@ -101,8 +109,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
   };
 
   // Formatar data para exibição
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: string | Date) => { // Ajustado para aceitar Date ou string
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      return "Data inválida";
+    }
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -119,7 +130,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       case "confirmed": return "bg-blue-100 text-blue-800";
       case "preparing": return "bg-purple-100 text-purple-800";
       case "ready": return "bg-green-100 text-green-800";
-      case "delivering": return "bg-blue-100 text-blue-800";
+      case "delivering": return "bg-indigo-100 text-indigo-800"; // Alterado para indigo para diferenciar
       case "received": return "bg-blue-200 text-blue-800";
       case "delivered": return "bg-green-100 text-green-800";
       case "cancelled": return "bg-red-100 text-red-800";
@@ -144,6 +155,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       case "paid": return <CheckCircle2 className="h-5 w-5" />;
       default: return <ClipboardList className="h-5 w-5" />;
     }
+  };
+
+  // Função para formatar o endereço estruturado
+  const formatAddress = (address: Order['address']) => {
+    if (!address) return "Endereço não disponível";
+    // Garante que as propriedades existem antes de acessá-las
+    const street = address.street || '';
+    const number = address.number || '';
+    const complement = address.complement || '';
+    const neighborhood = address.neighborhood || '';
+    const city = address.city || '';
+    const state = address.state || '';
+    const zipCode = address.zipCode || '';
+
+    let formattedAddress = `${street}, ${number}`;
+    if (complement) formattedAddress += `, ${complement}`;
+    formattedAddress += ` - ${neighborhood}, ${city} - ${state}`;
+    if (zipCode) formattedAddress += ` (${zipCode})`;
+    return formattedAddress;
   };
 
   // Calcular subtotal do item incluindo variações
@@ -364,7 +394,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
         </div>
         <div className="col-span-2">
           <h3 className="text-sm font-medium text-gray-500">Endereço</h3>
-          <p className="mt-1">{order.address}</p>
+          {/* CORREÇÃO AQUI: Exibindo o endereço formatado */}
+          <p className="mt-1">{formatAddress(order.address)}</p>
         </div>
         <div>
           <h3 className="text-sm font-medium text-gray-500">Forma de Pagamento</h3>
