@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch"; // Importe o componente Switch
+import { useEmpresa } from "@/hooks/useEmpresa";
 
 export default function AdminCupons() {
   const [cupons, setCupons] = useState<any[]>([]);
