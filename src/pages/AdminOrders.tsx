@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, Timestamp, getDocs } from "firebase/firestore"; // Adicionado getDocs
 import { db } from "@/lib/firebase";
 import { Order } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,13 @@ import {
 } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/DateRangePicker";
 
+// Definindo um tipo básico para o entregador, assumindo que você tem um tipo User mais completo em outro lugar.
+// Se você já tem um tipo User, pode importá-lo.
+interface Deliverer {
+  id: string;
+  name: string;
+}
+
 const AdminOrders = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -42,12 +49,20 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Novos estados para a seleção de entregador ---
+  const [isDelivererSelectionModalOpen, setIsDelivererSelectionModalOpen] = useState(false);
+  const [availableDeliverers, setAvailableDeliverers] = useState<Deliverer[]>([]);
+  const [selectedDelivererId, setSelectedDelivererId] = useState<string>("");
+  const [orderToAssignDeliverer, setOrderToAssignDeliverer] = useState<Order | null>(null);
+  // --- Fim dos novos estados ---
+
   const today = new Date();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: today,
     to: today
   });
 
+  // Função para carregar os pedidos
   const loadOrders = async (status: string, dateRange: DateRange | undefined) => {
     try {
       setLoading(true);
@@ -73,6 +88,36 @@ const AdminOrders = () => {
       toast({
         title: "Erro",
         description: "Não foi possível carregar os pedidos. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Função para buscar entregadores ativos
+  const fetchAvailableDeliverers = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(
+        usersRef,
+        where("role", "==", "entregador"),
+        where("status", "==", "ativo") // Assumindo que você tem um campo 'status' para o entregador
+      );
+      const querySnapshot = await getDocs(q);
+      const deliverers: Deliverer[] = [];
+      querySnapshot.forEach((doc) => {
+        deliverers.push({ id: doc.id, name: doc.data().name }); // Assumindo que o campo de nome é 'name'
+      });
+      setAvailableDeliverers(deliverers);
+      if (deliverers.length > 0) {
+        setSelectedDelivererId(deliverers[0].id); // Seleciona o primeiro por padrão
+      } else {
+        setSelectedDelivererId("");
+      }
+    } catch (err) {
+      console.error("Erro ao buscar entregadores:", err);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os entregadores disponíveis.",
         variant: "destructive",
       });
     }
@@ -137,7 +182,7 @@ const AdminOrders = () => {
 
       return () => unsubscribe();
     }
-  }, [activeStatus, dateRange, toast]); // Adicione toast às dependências do useEffect
+  }, [activeStatus, dateRange, toast]);
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
@@ -157,6 +202,17 @@ const AdminOrders = () => {
     try {
       console.log("AdminOrders - Atualizando pedido:", { orderId, newStatus, paymentStatus });
 
+      // --- Lógica para seleção de entregador ---
+      if (newStatus === "delivering" && selectedOrder?.status === "ready") {
+        // Se o status for para "em rota de entrega" e o status atual for "pronto para entrega",
+        // abre o modal de seleção de entregador.
+        setOrderToAssignDeliverer(selectedOrder); // Guarda o pedido para atribuição
+        await fetchAvailableDeliverers(); // Busca os entregadores
+        setIsDelivererSelectionModalOpen(true);
+        return; // Interrompe a atualização normal do status por enquanto
+      }
+      // --- Fim da lógica para seleção de entregador ---
+
       // Preparar objeto de atualização
       const updateData: any = {};
 
@@ -167,11 +223,6 @@ const AdminOrders = () => {
       if (paymentStatus) {
         updateData.paymentStatus = paymentStatus;
       }
-
-      // Adicione aqui a lógica para cancellationReason se for implementada a opção de cancelar pelo modal
-      // if (cancellationReason) {
-      //   updateData.cancellationReason = cancellationReason;
-      // }
 
       const updatedOrder = await updateOrder(orderId, updateData);
 
@@ -206,15 +257,61 @@ const AdminOrders = () => {
     }
   };
 
+  // Nova função para atribuir o entregador e finalizar a atualização para "delivering"
+  const handleAssignDelivererAndDeliver = async () => {
+    if (!orderToAssignDeliverer || !selectedDelivererId) {
+      toast({
+        title: "Erro",
+        description: "Selecione um entregador para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedOrder = await updateOrder(orderToAssignDeliverer.id, {
+        status: "delivering",
+        entregador_id: selectedDelivererId, // Adiciona o ID do entregador
+      });
+
+      if (updatedOrder) {
+        setOrders(prev =>
+          prev.map(order => order.id === orderToAssignDeliverer.id ? updatedOrder : order)
+        );
+
+        if (selectedOrder && selectedOrder.id === orderToAssignDeliverer.id) {
+          setSelectedOrder(updatedOrder);
+        }
+
+        toast({
+          title: "Pedido atualizado",
+          description: `Pedido ${orderToAssignDeliverer.id.substring(0, 6)} atribuído ao entregador e em rota de entrega.`,
+        });
+
+        setIsDelivererSelectionModalOpen(false); // Fecha o modal de seleção
+        setOrderToAssignDeliverer(null); // Limpa o pedido em atribuição
+        setSelectedDelivererId(""); // Limpa o entregador selecionado
+      }
+    } catch (error) {
+      console.error("Erro ao atribuir entregador e atualizar pedido:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atribuir o entregador e atualizar o pedido. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const translateStatus = (status: Order["status"]) => {
     const statusMap: Record<Order["status"], string> = {
       pending: "Pendente",
-      accepted: "Aceito", // Adicionei 'accepted' aqui, se for um status válido
+      accepted: "Aceito",
       confirmed: "Aceito",
       preparing: "Em produção",
       ready: "Pronto para Entrega",
       delivering: "Saiu para entrega",
-      received: "Recebido", // Assumindo 'received' como entregue e finalizado
+      received: "Recebido",
       delivered: "Entrega finalizada",
       cancelled: "Cancelado",
       to_deduct: "A descontar",
@@ -227,10 +324,10 @@ const AdminOrders = () => {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800";
       case "confirmed":
-      case "accepted": return "bg-blue-100 text-blue-800"; // Inclua 'accepted'
+      case "accepted": return "bg-blue-100 text-blue-800";
       case "preparing": return "bg-purple-100 text-purple-800";
       case "ready": return "bg-green-100 text-green-800";
-      case "delivering": return "bg-blue-100 text-blue-800";
+      case "delivering": return "bg-indigo-100 text-indigo-800"; // Cor diferente para "em rota"
       case "received":
       case "delivered": return "bg-green-100 text-green-800";
       case "cancelled": return "bg-red-100 text-red-800";
@@ -331,6 +428,11 @@ const AdminOrders = () => {
               <div className="mt-2">
                 <div className="font-semibold">{order.customerName}</div>
                 <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                {order.entregador_id && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    Entregador: {availableDeliverers.find(d => d.id === order.entregador_id)?.name || order.entregador_id}
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="py-4">
@@ -351,7 +453,7 @@ const AdminOrders = () => {
                       // Você precisa definir qual status o botão "Marcar como Recebido" deve definir.
                       // Se "received" significa que o cliente recebeu, use "received".
                       // Se for para quando a entrega finalizou, use "delivered".
-                      const novoStatus = order.status === "delivering" ? "delivered" : "received"; // Exemplo: se está entregando, marca como entregue. Caso contrário, marca como recebido.
+                      const novoStatus = order.status === "delivering" ? "delivered" : "delivered"; // Alterado para sempre "delivered" se já estiver entregando
                       handleUpdateOrderStatus(order.id, novoStatus);
                     }}
                     variant="secondary"
@@ -386,6 +488,7 @@ const AdminOrders = () => {
         )}
       </div>
 
+      {/* Modal de Detalhes do Pedido (existente) */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -415,8 +518,27 @@ const AdminOrders = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-};
 
-export default AdminOrders;
+      {/* NOVO Modal de Seleção de Entregador */}
+      <Dialog open={isDelivererSelectionModalOpen} onOpenChange={setIsDelivererSelectionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir Entregador</DialogTitle>
+            <DialogDescription>
+              Selecione o entregador responsável por este pedido.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label htmlFor="deliverer-select" className="text-sm font-medium mb-2 block">
+              Entregador:
+            </label>
+            <Select
+              value={selectedDelivererId}
+              onValueChange={setSelectedDelivererId}
+            >
+              <SelectTrigger id="deliverer-select" className="w-full">
+                <SelectValue placeholder="Selecione um entregador" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDeliverers.length > 0 ? (
+     
