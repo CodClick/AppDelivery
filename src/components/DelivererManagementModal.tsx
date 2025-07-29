@@ -34,7 +34,7 @@ interface DelivererManagementModalProps {
   empresaId: string | null; // O ID da empresa do admin logado
 }
 
-const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isOpen, onClose, empresaId }) => {
+const DelivererManagementModal: React.FC<DelivererManagementModalModalProps> = ({ isOpen, onClose, empresaId }) => {
   const { toast } = useToast();
   const [deliverers, setDeliverers] = useState<Deliverer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,8 +49,13 @@ const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isO
     status_entregador: "ativo", // Padrão para ativo
   });
 
+  // Log para verificar as props do modal
+  console.log("DelivererManagementModal: Renderizando. isOpen:", isOpen, "empresaId:", empresaId);
+
+
   // Função para buscar entregadores
   const fetchDeliverers = async () => {
+    console.log("fetchDeliverers: Função iniciada.");
     if (!empresaId) {
       console.warn("fetchDeliverers: empresaId não fornecido. Não é possível buscar entregadores.");
       setDeliverers([]);
@@ -58,38 +63,52 @@ const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isO
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // Garante que o estado de loading é ativado
+    console.log("fetchDeliverers: Tentando buscar entregadores para empresaId:", empresaId);
     try {
+      console.log("fetchDeliverers: Fazendo chamada ao Supabase...");
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nome, telefone, placa, cpf, status_entregador, empresa_id, email') // Incluí email para depuração
+        .select('id, nome, telefone, placa, cpf, status_entregador, empresa_id, email')
         .eq('empresa_id', empresaId)
-        .eq('role', 'entregador'); // Filtra apenas por entregadores
+        .eq('role', 'entregador');
 
       if (error) {
+        console.error("fetchDeliverers: Erro do Supabase:", error.message);
         throw error;
       }
 
       setDeliverers(data as Deliverer[]);
-      console.log("Entregadores carregados:", data);
+      console.log("fetchDeliverers: Entregadores carregados com sucesso:", data);
     } catch (error: any) {
-      console.error("Erro ao buscar entregadores:", error.message);
+      console.error("fetchDeliverers: Erro capturado ao buscar entregadores:", error.message);
       toast({
         title: "Erro",
         description: `Não foi possível carregar os entregadores: ${error.message}`,
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      console.log("fetchDeliverers: Bloco finally executado. Definindo loading para false.");
+      setLoading(false); // Garante que o estado de loading é desativado
     }
   };
 
   // Efeito para buscar entregadores quando o modal abre ou empresaId muda
   useEffect(() => {
+    console.log("useEffect: Disparado no DelivererManagementModal. isOpen:", isOpen, "empresaId:", empresaId, "loading atual:", loading);
     if (isOpen && empresaId) {
-      fetchDeliverers();
+      // Adicionado uma pequena verificação para evitar chamadas duplicadas se já estiver carregando
+      if (!loading) { // Só chama se não estiver já carregando
+        fetchDeliverers();
+      } else {
+        console.log("useEffect: Já está carregando ou empresaId não disponível, pulando fetch inicial.");
+      }
+    } else if (!isOpen) {
+        // Se o modal fechar, resetar o estado de loading para a próxima abertura
+        setLoading(true);
+        setDeliverers([]); // Opcional: limpar a lista ao fechar
     }
-  }, [isOpen, empresaId]);
+  }, [isOpen, empresaId]); // Removido 'loading' das dependências para evitar loop infinito
 
   // Função para alternar o status do entregador
   const handleToggleStatus = async (delivererId: string, currentStatus: 'ativo' | 'inativo') => {
@@ -149,7 +168,7 @@ const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isO
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // Ativa o loading para a operação de adicionar
     try {
       // 1. Criar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -177,30 +196,22 @@ const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isO
       }
 
       // 2. Inserir dados adicionais na tabela 'usuarios' (se não for feito automaticamente pelo trigger do Supabase)
-      // Se você já tem um trigger no Supabase que insere na tabela 'usuarios' após o auth.signUp,
-      // esta parte pode ser redundante ou precisar de ajustes.
-      // Assumindo que o trigger já cuida disso, ou que precisamos garantir que o role e empresa_id sejam setados corretamente.
-      // O ideal é que o trigger crie o registro base e você atualize campos específicos se necessário.
-      // Por simplicidade e para garantir, vamos inserir aqui, mas verifique seu setup de triggers.
-
-      // Se o trigger não adiciona role e empresa_id, ou se você quer garantir:
       const { error: insertError } = await supabase
         .from('usuarios')
-        .upsert({ // upsert para garantir que, se o trigger já criou, ele atualize
+        .upsert({
           id: authData.user.id,
           nome: newDelivererData.nome,
           email: newDelivererData.email,
-          role: "entregador", // Garante o role
-          empresa_id: empresaId, // Garante o empresa_id
+          role: "entregador",
+          empresa_id: empresaId,
           telefone: newDelivererData.telefone || null,
           placa: newDelivererData.placa || null,
           cpf: newDelivererData.cpf || null,
           status_entregador: newDelivererData.status_entregador || "ativo",
-          created_at: new Date().toISOString(), // Supabase geralmente gerencia isso
-        }, { onConflict: 'id' }); // Conflito no ID para atualizar se já existir
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
 
       if (insertError) {
-        // Se houver erro na inserção do perfil, considere deletar o usuário do auth para evitar inconsistência
         await supabase.auth.admin.deleteUser(authData.user.id);
         throw insertError;
       }
@@ -229,7 +240,7 @@ const DelivererManagementModal: React.FC<DelivererManagementModalProps> = ({ isO
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setLoading(false); // Desativa o loading após a operação de adicionar
     }
   };
 
