@@ -99,7 +99,8 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       couponType: orderData.couponType || null,
       couponValue: orderData.couponValue || null,
       entregador_id: orderData.entregador_id || null,
-      empresa_id: orderData.empresa_id, // Garante que empresa_id seja salvo
+      // CORREÇÃO AQUI: Garante que empresa_id seja uma string ou null, nunca undefined
+      empresa_id: orderData.empresa_id || null, 
       
       createdAt: new Date(),
       updatedAt: new Date()
@@ -139,7 +140,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       createdAt: formatTimestamp(orderData.createdAt),
       updatedAt: formatTimestamp(orderData.updatedAt),
       entregador_id: orderData.entregador_id || null,
-      empresa_id: orderData.empresa_id, // <--- Adicionado aqui
+      empresa_id: orderData.empresa_id || null, // <--- Adicionado aqui para leitura
     } as Order;
   } catch (error) {
     console.error("Erro ao obter pedido:", error);
@@ -166,7 +167,7 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
         entregador_id: data.entregador_id || null,
-        empresa_id: data.empresa_id, // <--- Adicionado aqui
+        empresa_id: data.empresa_id || null, // <--- Adicionado aqui para leitura
       } as Order;
     });
   } catch (error) {
@@ -216,7 +217,7 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
         entregador_id: data.entregador_id || null,
-        empresa_id: data.empresa_id, // <--- Adicionado aqui
+        empresa_id: data.empresa_id || null, // <--- Adicionado aqui para leitura
       } as Order;
     });
     
@@ -274,7 +275,7 @@ export const getOrdersByDateRange = async (
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
         entregador_id: data.entregador_id || null,
-        empresa_id: data.empresa_id, // <--- Adicionado aqui
+        empresa_id: data.empresa_id || null, // <--- Adicionado aqui para leitura
       } as Order;
     });
     
