@@ -61,8 +61,6 @@ const AdminOrders = () => {
   const [loadingDeliverers, setLoadingDeliverers] = useState(false); // Novo estado de carregamento para entregadores
   // --- Fim dos novos estados ---
 
-  // REMOVIDO: const currentEmpresaId = "..."; // Não é mais necessário aqui, será pego do selectedOrder
-
   const today = new Date();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: today,
@@ -107,6 +105,8 @@ const AdminOrders = () => {
   // Função para buscar entregadores ativos (AGORA USA SUPABASE com empresa_id dinâmico e nomes de colunas corrigidos)
   const fetchAvailableDeliverers = async (empresaId: string) => { // Recebe empresaId como argumento
     console.log("fetchAvailableDeliverers: Iniciando busca de entregadores (Supabase)...");
+    console.log("fetchAvailableDeliverers: Empresa ID para busca:", empresaId); // Log para confirmar o ID
+
     setLoadingDeliverers(true); // Ativa o estado de carregamento
     try {
       if (!supabase) {
@@ -120,16 +120,13 @@ const AdminOrders = () => {
         return;
       }
       
-      // Log do empresa_id que será usado na query
-      console.log("fetchAvailableDeliverers: Filtrando entregadores por empresa_id:", empresaId);
-
-      // Consulta ao Supabase com nomes de tabela/colunas corrigidos
+      // Consulta ao Supabase com filtros relaxados para depuração
+      // Temporariamente, estamos removendo os filtros 'role' e 'status_entregador'
+      // para ver se algum usuário é retornado para o empresa_id.
       const { data, error } = await supabase
         .from('usuarios') // Nome da sua tabela de usuários no Supabase
-        .select('id, nome') // Seleciona as colunas id e nome (alterado de 'name')
-        .eq('role', 'entregador') // Filtra por 'role' igual a 'entregador'
-        .eq('status_entregador', 'ativo') // Filtra por 'status_entregador' igual a 'ativo' (alterado de 'status')
-        .eq('empresa_id', empresaId); // Filtra pelo empresa_id recebido como argumento
+        .select('id, nome, role, status_entregador, empresa_id') // Seleciona todas as colunas relevantes para depuração
+        .eq('empresa_id', empresaId); // Filtra APENAS pelo empresa_id
 
       if (error) {
         console.error("fetchAvailableDeliverers: Erro ao buscar entregadores do Supabase:", error.message);
@@ -142,17 +139,21 @@ const AdminOrders = () => {
       }
 
       // NOVO LOG: Mostra os dados brutos retornados pelo Supabase
-      console.log("fetchAvailableDeliverers: Dados brutos do Supabase para entregadores:", data);
+      console.log("fetchAvailableDeliverers: Dados brutos do Supabase para entregadores (com filtros relaxados):", data);
 
-      const deliverers: Deliverer[] = data || []; // Supabase retorna os dados diretamente em 'data'
-      setAvailableDeliverers(deliverers);
+      // Agora, filtre os entregadores no frontend com base nos dados brutos
+      const filteredDeliverers: Deliverer[] = (data || [])
+        .filter(user => user.role === 'entregador' && user.status_entregador === 'ativo')
+        .map(user => ({ id: user.id, nome: user.nome }));
 
-      if (deliverers.length > 0) {
-        setSelectedDelivererId(deliverers[0].id); // Seleciona o primeiro por padrão
-        console.log(`fetchAvailableDeliverers: ${deliverers.length} entregadores encontrados no Supabase. Primeiro selecionado: ${deliverers[0].nome}`); // Log com 'nome'
+      setAvailableDeliverers(filteredDeliverers);
+
+      if (filteredDeliverers.length > 0) {
+        setSelectedDelivererId(filteredDeliverers[0].id); // Seleciona o primeiro por padrão
+        console.log(`fetchAvailableDeliverers: ${filteredDeliverers.length} entregadores ATIVOS e com ROLE 'entregador' encontrados no Supabase. Primeiro selecionado: ${filteredDeliverers[0].nome}`);
       } else {
         setSelectedDelivererId("");
-        console.log("fetchAvailableDeliverers: Nenhum entregador ativo encontrado no Supabase para esta empresa.");
+        console.log("fetchAvailableDeliverers: Nenhum entregador ativo encontrado no Supabase para esta empresa (após filtro no frontend).");
       }
     } catch (err) {
       console.error("fetchAvailableDeliverers: Erro geral ao buscar entregadores:", err);
