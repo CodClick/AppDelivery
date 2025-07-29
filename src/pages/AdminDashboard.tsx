@@ -191,24 +191,6 @@ const AdminDashboard = () => {
         </Card>
         {/* FIM DO NOVO CARD */}
 
-        {/* NOVO CARD: Pedidos em rota de entrega */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-orange-100 rounded-full w-fit">
-              <Truck className="h-8 w-8 text-orange-600" />
-            </div>
-            <CardTitle className="text-xl">Pedidos em Rota de Entrega</CardTitle>
-            <CardDescription>
-              Visualize aqui todos os pedidos ainda não finalizados/entregues
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link to="/entregador">Ver Pedidos</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        {/* FIM DO NOVO CARD */}
 
       </div>
 
