@@ -1,3 +1,4 @@
+//src/pages/Checkout.tsx
 import React, { useState, useContext } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { fetchAddressByCep } from "@/services/cepService";
 
-// IMPORTANTE: Agora importamos o useAuth do seu AuthContext real
+// IMPORTANTE: Importamos o useAuth do seu AuthContext real
 import { useAuth } from "@/contexts/AuthContext"; // <--- CORREÇÃO AQUI: Importação do seu AuthContext real
-
-// REMOVIDO: O hook useAuth simulado foi removido daqui.
 
 
 const Checkout = () => {
@@ -41,7 +40,7 @@ const Checkout = () => {
   const [neighborhood, setNeighborhood] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "pix" | "payroll_discount">("card"); // Adicionado pix e payroll_discount
   const [observations, setObservations] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -78,8 +77,8 @@ const Checkout = () => {
 
     // Validação para garantir que o empresa_id está disponível
     // O empresa_id no currentUser do AuthContext vem do perfil do usuário no Supabase
-    if (!currentUser || !currentUser.id) { // O ID do usuário logado é o ID do perfil no Supabase
-      console.error("handleSubmit: ID do usuário logado (empresa_id) não encontrado.");
+    if (!currentUser || !currentUser.empresa_id) { // Agora verifica currentUser.empresa_id
+      console.error("handleSubmit: empresa_id não encontrado no usuário logado.");
       toast({
         title: "Erro de Autenticação",
         description: "Não foi possível identificar a empresa. Por favor, faça login novamente.",
@@ -89,12 +88,8 @@ const Checkout = () => {
       return;
     }
     
-    // O empresa_id deve ser buscado do perfil do usuário logado no Supabase.
-    // Assumindo que o perfil do usuário logado (que é o dono da empresa)
-    // tem um campo 'empresa_id' ou que o 'id' do currentUser é o 'empresa_id'
-    // Se o 'empresa_id' estiver diretamente no objeto currentUser (como 'currentUser.empresa_id'), use-o.
-    // Se o 'id' do currentUser for o 'empresa_id' (o que parece ser o caso pelo seu log anterior), use-o.
-    const empresaIdDoUsuarioLogado = currentUser.id; // <--- AQUI ESTÁ A CHAVE!
+    // Usa o empresa_id que foi carregado no AuthContext
+    const empresaIdDoUsuarioLogado = currentUser.empresa_id; 
 
     try {
       // A variável fullAddress não é usada no objeto address, mas mantida para referência/logs se necessário.
@@ -142,6 +137,7 @@ const Checkout = () => {
         couponType: appliedCoupon ? appliedCoupon.tipo : null,
         couponValue: appliedCoupon ? appliedCoupon.valor : null,
         empresa_id: empresaIdDoUsuarioLogado, // <--- AQUI ESTÁ A CORREÇÃO CRÍTICA!
+        paymentStatus: "a_receber", // Definido como "a_receber" por padrão no checkout
       };
 
       console.log("[CHECKOUT] Dados do pedido sendo enviados:", JSON.stringify(orderData, null, 2));
@@ -288,7 +284,7 @@ const Checkout = () => {
 
               <div>
                 <Label>Forma de Pagamento</Label>
-                <RadioGroup value={paymentMethod} onValueChange={(value: "card" | "cash") => setPaymentMethod(value)}>
+                <RadioGroup value={paymentMethod} onValueChange={(value: "card" | "cash" | "pix" | "payroll_discount") => setPaymentMethod(value)}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="card" id="card" />
                     <Label htmlFor="card">Cartão</Label>
@@ -296,6 +292,14 @@ const Checkout = () => {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="cash" id="cash" />
                     <Label htmlFor="cash">Dinheiro</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="pix" id="pix" />
+                    <Label htmlFor="pix">PIX</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="payroll_discount" id="payroll_discount" />
+                    <Label htmlFor="payroll_discount">Desconto em Folha</Label>
                   </div>
                 </RadioGroup>
               </div>
