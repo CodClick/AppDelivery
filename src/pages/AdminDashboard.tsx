@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator, Percent } from "lucide-react";
+import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator, Percent, Users } from "lucide-react"; // Adicionado Users icon
 import {
   Card,
   CardContent,
@@ -10,17 +10,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ClipboardList,
-  Settings,
-  LogOut,
-  ArrowLeft,
-  Calculator,
-} from "lucide-react";
+  Dialog, // Importado para o modal
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
 import { useAuthState } from "@/hooks/useAuthState";
 import { useEmpresa } from "@/hooks/useEmpresa";
+import DelivererManagementModal from "@/components/DelivererManagementModal"; // Importa o novo componente do modal
 
 const AdminDashboard = () => {
   useProtectPage("admin");
@@ -29,6 +30,8 @@ const AdminDashboard = () => {
   const { logOut } = useAuth();
   const { user } = useAuthState();
   const { empresa } = useEmpresa(user?.id ?? null); // <- agora está dentro do componente!
+
+  const [isDelivererModalOpen, setIsDelivererModalOpen] = useState(false); // Estado para controlar a abertura do modal de entregadores
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -110,22 +113,42 @@ const AdminDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-		<Card className="hover:shadow-lg transition-shadow cursor-pointer">
-  <CardHeader className="text-center">
-    <div className="mx-auto mb-4 p-3 bg-yellow-100 rounded-full w-fit">
-      <Percent className="h-8 w-8 text-yellow-600" />
-    </div>
-    <CardTitle className="text-xl">Cupons de Desconto</CardTitle>
-    <CardDescription>
-      Crie e gerencie cupons promocionais para seus clientes
-    </CardDescription>
-  </CardHeader>
-  <CardContent>
-    <Button asChild className="w-full">
-      <Link to="/admin-coupons">Gerenciar Cupons</Link>
-    </Button>
-  </CardContent>
-</Card>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-yellow-100 rounded-full w-fit">
+              <Percent className="h-8 w-8 text-yellow-600" />
+            </div>
+            <CardTitle className="text-xl">Cupons de Desconto</CardTitle>
+            <CardDescription>
+              Crie e gerencie cupons promocionais para seus clientes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link to="/admin-coupons">Gerenciar Cupons</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* NOVO CARD: Gerenciamento de Entregadores */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-orange-100 rounded-full w-fit">
+              <Users className="h-8 w-8 text-orange-600" /> {/* Ícone de usuários */}
+            </div>
+            <CardTitle className="text-xl">Gerenciar Entregadores</CardTitle>
+            <CardDescription>
+              Visualize, ative/desative e adicione entregadores
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => setIsDelivererModalOpen(true)} className="w-full">
+              Acessar Entregadores
+            </Button>
+          </CardContent>
+        </Card>
+        {/* FIM DO NOVO CARD */}
+
       </div>
       
 
@@ -137,6 +160,13 @@ const AdminDashboard = () => {
           e acessar o sistema de PDV.
         </p>
       </div>
+
+      {/* Modal de Gerenciamento de Entregadores */}
+      <DelivererManagementModal
+        isOpen={isDelivererModalOpen}
+        onClose={() => setIsDelivererModalOpen(false)}
+        empresaId={empresa?.id || null} // Passa o empresa_id para o modal
+      />
     </div>
   );
 };
