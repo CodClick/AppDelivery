@@ -54,6 +54,7 @@ const AdminOrders = () => {
   const [availableDeliverers, setAvailableDeliverers] = useState<Deliverer[]>([]);
   const [selectedDelivererId, setSelectedDelivererId] = useState<string>("");
   const [orderToAssignDeliverer, setOrderToAssignDeliverer] = useState<Order | null>(null);
+  const [loadingDeliverers, setLoadingDeliverers] = useState(false); // Novo estado de carregamento para entregadores
   // --- Fim dos novos estados ---
 
   const today = new Date();
@@ -64,11 +65,13 @@ const AdminOrders = () => {
 
   // Função para carregar os pedidos
   const loadOrders = async (status: string, dateRange: DateRange | undefined) => {
+    console.log("loadOrders: Iniciando carregamento de pedidos...");
     try {
       setLoading(true);
       setError(null);
 
       if (!dateRange?.from) {
+        console.log("loadOrders: Data inicial não definida. Limpando pedidos.");
         setOrders([]);
         setLoading(false);
         return;
@@ -77,11 +80,13 @@ const AdminOrders = () => {
       const startDate = dateRange.from;
       const endDate = dateRange.to || dateRange.from;
 
+      console.log(`loadOrders: Buscando pedidos de ${startDate.toLocaleDateString()} a ${endDate.toLocaleDateString()} com status '${status}'`);
       const orders = await getOrdersByDateRange(startDate, endDate, status === "all" ? undefined : status);
       setOrders(orders);
+      console.log(`loadOrders: ${orders.length} pedidos carregados.`);
       setLoading(false);
     } catch (err) {
-      console.error("Erro ao carregar pedidos:", err);
+      console.error("loadOrders: Erro ao carregar pedidos:", err);
       setError("Não foi possível carregar os pedidos. Tente novamente.");
       setLoading(false);
 
@@ -95,7 +100,13 @@ const AdminOrders = () => {
 
   // Função para buscar entregadores ativos
   const fetchAvailableDeliverers = async () => {
+    console.log("fetchAvailableDeliverers: Iniciando busca de entregadores...");
+    setLoadingDeliverers(true); // Ativa o estado de carregamento
     try {
+      if (!db) {
+        console.error("fetchAvailableDeliverers: Instância do Firestore (db) não disponível.");
+        throw new Error("Firestore DB not initialized.");
+      }
       const usersRef = collection(db, "users");
       const q = query(
         usersRef,
@@ -110,23 +121,29 @@ const AdminOrders = () => {
       setAvailableDeliverers(deliverers);
       if (deliverers.length > 0) {
         setSelectedDelivererId(deliverers[0].id); // Seleciona o primeiro por padrão
+        console.log(`fetchAvailableDeliverers: ${deliverers.length} entregadores encontrados. Primeiro selecionado: ${deliverers[0].name}`);
       } else {
         setSelectedDelivererId("");
+        console.log("fetchAvailableDeliverers: Nenhum entregador ativo encontrado.");
       }
     } catch (err) {
-      console.error("Erro ao buscar entregadores:", err);
+      console.error("fetchAvailableDeliverers: Erro ao buscar entregadores:", err);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os entregadores disponíveis.",
         variant: "destructive",
       });
+    } finally {
+      setLoadingDeliverers(false); // Desativa o estado de carregamento
     }
   };
 
   useEffect(() => {
+    console.log("useEffect: Disparado devido a mudança de activeStatus ou dateRange.");
     loadOrders(activeStatus, dateRange);
 
     if (dateRange?.from) {
+      console.log("useEffect: Configurando listener de snapshot para pedidos.");
       const start = new Date(dateRange.from);
       start.setHours(0, 0, 0, 0);
 
@@ -147,11 +164,13 @@ const AdminOrders = () => {
       const unsubscribe = onSnapshot(
         ordersQuery,
         (snapshot) => {
+          console.log("onSnapshot: Mudança detectada nos pedidos.");
           // Apenas recarrega se houver mudanças significativas ou se a dataRange for a mesma do carregamento inicial
           // Para evitar recarregamentos desnecessários em cada pequena alteração que não afeta o filtro.
           // Uma abordagem mais refinada seria atualizar apenas os pedidos específicos que mudaram.
           // Por simplicidade, para o propósito deste listener, vamos disparar o loadOrders completo se houver alguma mudança.
           if (!snapshot.empty) {
+            console.log("onSnapshot: Snapshot não vazio, recarregando pedidos.");
             loadOrders(activeStatus, dateRange);
           }
 
@@ -166,12 +185,13 @@ const AdminOrders = () => {
                   title: "Novo pedido recebido!",
                   description: `Cliente: ${data.customerName}`,
                 });
+                console.log(`onSnapshot: Novo pedido pendente detectado: ${data.customerName}`);
               }
             }
           });
         },
         (err) => {
-          console.error("Erro no listener:", err);
+          console.error("onSnapshot: Erro no listener:", err);
           toast({
             title: "Erro",
             description: "Não foi possível monitorar novos pedidos.",
@@ -180,15 +200,20 @@ const AdminOrders = () => {
         }
       );
 
-      return () => unsubscribe();
+      return () => {
+        console.log("useEffect cleanup: Desinscrevendo do listener de snapshot.");
+        unsubscribe();
+      };
     }
   }, [activeStatus, dateRange, toast]);
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
+    console.log("handleDateRangeChange: Nova faixa de data selecionada:", range);
     setDateRange(range);
   };
 
   const handleViewOrder = (order: Order) => {
+    console.log("handleViewOrder: Visualizando detalhes do pedido:", order.id);
     setSelectedOrder(order);
     setDialogOpen(true);
   };
@@ -199,16 +224,14 @@ const AdminOrders = () => {
     cancellationReason?: string,
     paymentStatus?: "a_receber" | "recebido"
   ) => {
+    console.log(`handleUpdateOrderStatus: Tentando atualizar pedido ${orderId} para status ${newStatus || 'N/A'}`);
     try {
-      console.log("AdminOrders - Atualizando pedido:", { orderId, newStatus, paymentStatus });
-
       // --- Lógica para seleção de entregador ---
-      // Verifica se o novo status é "delivering" E o status atual do pedido selecionado é "ready"
-      // (Isso garante que o modal só abra na transição específica)
       if (newStatus === "delivering" && selectedOrder?.status === "ready") {
-        setOrderToAssignDeliverer(selectedOrder); // Guarda o pedido para atribuição
-        await fetchAvailableDeliverers(); // Busca os entregadores
-        setIsDelivererSelectionModalOpen(true); // Abre o modal de seleção
+        console.log("handleUpdateOrderStatus: Transição para 'delivering' detectada. Abrindo modal de seleção de entregador.");
+        setOrderToAssignDeliverer(selectedOrder);
+        await fetchAvailableDeliverers(); // Busca os entregadores antes de abrir o modal
+        setIsDelivererSelectionModalOpen(true);
         return; // Interrompe a atualização normal do status por enquanto
       }
       // --- Fim da lógica para seleção de entregador ---
@@ -224,9 +247,11 @@ const AdminOrders = () => {
         updateData.paymentStatus = paymentStatus;
       }
 
+      console.log("handleUpdateOrderStatus: Chamando updateOrder com dados:", updateData);
       const updatedOrder = await updateOrder(orderId, updateData);
 
       if (updatedOrder) {
+        console.log("handleUpdateOrderStatus: Pedido atualizado com sucesso no Firestore.");
         // Atualizar a lista de pedidos
         setOrders(prev =>
           prev.map(order => order.id === orderId ? updatedOrder : order)
@@ -246,9 +271,16 @@ const AdminOrders = () => {
           title: "Pedido atualizado",
           description: statusMessage,
         });
+      } else {
+        console.warn("handleUpdateOrderStatus: updateOrder retornou null, pedido não encontrado ou não atualizado.");
+        toast({
+          title: "Aviso",
+          description: "Pedido não encontrado ou não foi possível atualizar.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error("Erro ao atualizar pedido:", error);
+      console.error("handleUpdateOrderStatus: Erro ao atualizar pedido:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o pedido. Tente novamente.",
@@ -259,7 +291,9 @@ const AdminOrders = () => {
 
   // Nova função para atribuir o entregador e finalizar a atualização para "delivering"
   const handleAssignDelivererAndDeliver = async () => {
+    console.log("handleAssignDelivererAndDeliver: Iniciando atribuição de entregador.");
     if (!orderToAssignDeliverer || !selectedDelivererId) {
+      console.warn("handleAssignDelivererAndDeliver: Pedido ou entregador não selecionado.");
       toast({
         title: "Erro",
         description: "Selecione um entregador para continuar.",
@@ -269,12 +303,14 @@ const AdminOrders = () => {
     }
 
     try {
+      console.log(`handleAssignDelivererAndDeliver: Atribuindo pedido ${orderToAssignDeliverer.id} ao entregador ${selectedDelivererId}`);
       const updatedOrder = await updateOrder(orderToAssignDeliverer.id, {
         status: "delivering",
         entregador_id: selectedDelivererId, // Adiciona o ID do entregador
       });
 
       if (updatedOrder) {
+        console.log("handleAssignDelivererAndDeliver: Pedido atualizado com entregador e status 'delivering'.");
         setOrders(prev =>
           prev.map(order => order.id === orderToAssignDeliverer.id ? updatedOrder : order)
         );
@@ -291,9 +327,16 @@ const AdminOrders = () => {
         setIsDelivererSelectionModalOpen(false); // Fecha o modal de seleção
         setOrderToAssignDeliverer(null); // Limpa o pedido em atribuição
         setSelectedDelivererId(""); // Limpa o entregador selecionado
+      } else {
+        console.warn("handleAssignDelivererAndDeliver: updateOrder retornou null após atribuição.");
+        toast({
+          title: "Aviso",
+          description: "Não foi possível finalizar a atribuição do entregador.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error("Erro ao atribuir entregador e atualizar pedido:", error);
+      console.error("handleAssignDelivererAndDeliver: Erro ao atribuir entregador e atualizar pedido:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atribuir o entregador e atualizar o pedido. Tente novamente.",
@@ -363,6 +406,7 @@ const AdminOrders = () => {
   ];
 
   const handleRetryLoad = () => {
+    console.log("handleRetryLoad: Tentando recarregar pedidos.");
     loadOrders(activeStatus, dateRange);
   };
 
@@ -450,10 +494,7 @@ const AdminOrders = () => {
                 {order.status !== "received" && order.status !== "delivered" && (
                   <Button
                     onClick={() => {
-                      // Você precisa definir qual status o botão "Marcar como Recebido" deve definir.
-                      // Se "received" significa que o cliente recebeu, use "received".
-                      // Se for para quando a entrega finalizou, use "delivered".
-                      const novoStatus = order.status === "delivering" ? "delivered" : "delivered"; // Alterado para sempre "delivered" se já estiver entregando
+                      const novoStatus = order.status === "delivering" ? "delivered" : "delivered";
                       handleUpdateOrderStatus(order.id, novoStatus);
                     }}
                     variant="secondary"
@@ -472,105 +513,4 @@ const AdminOrders = () => {
       <div className="mt-8 p-4 bg-gray-100 rounded-lg border-t-4 border-blue-500">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="text-center">
-            <p className="text-sm text-gray-600">Total de Pedidos no Período</p>
-            <p className="text-2xl font-bold text-blue-600">{totalOrders}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Valor Total das Vendas</p>
-            <p className="text-2xl font-bold text-green-600">R$ {totalSales.toFixed(2)}</p>
-          </div>
-        </div>
-        {dateRange?.from && (
-          <div className="text-center mt-2 text-sm text-gray-500">
-            Período: {dateRange.from.toLocaleDateString('pt-BR')}
-            {dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() && ` até ${dateRange.to.toLocaleDateString('pt-BR')}`}
-          </div>
-        )}
-      </div>
-
-      {/* Modal de Detalhes do Pedido (existente) */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes do Pedido</DialogTitle>
-            <DialogDescription>
-              Visualize e atualize o status do pedido
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <OrderDetails
-              order={selectedOrder}
-              onUpdateStatus={handleUpdateOrderStatus}
-              // --- PASSA AS INFORMAÇÕES DO CUPOM PARA O ORDERDETAILS ---
-              discountAmount={selectedOrder.discountAmount || 0}
-              couponCode={selectedOrder.couponCode}
-              couponType={selectedOrder.couponType}
-              couponValue={selectedOrder.couponValue}
-              // --- FIM DOS NOVOS PROPS ---
-            />
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Fechar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* NOVO Modal de Seleção de Entregador */}
-      <Dialog open={isDelivererSelectionModalOpen} onOpenChange={setIsDelivererSelectionModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Atribuir Entregador</DialogTitle>
-            <DialogDescription>
-              Selecione o entregador responsável por este pedido.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label htmlFor="deliverer-select" className="text-sm font-medium mb-2 block">
-              Entregador:
-            </label>
-            <Select
-              value={selectedDelivererId}
-              onValueChange={setSelectedDelivererId}
-            >
-              <SelectTrigger id="deliverer-select" className="w-full">
-                <SelectValue placeholder="Selecione um entregador" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Renderiza as opções de entregadores disponíveis */}
-                {availableDeliverers.length > 0 ? (
-                  availableDeliverers.map((deliverer) => (
-                    <SelectItem key={deliverer.id} value={deliverer.id}>
-                      {deliverer.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="" disabled>
-                    Nenhum entregador ativo disponível.
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDelivererSelectionModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAssignDelivererAndDeliver}
-              disabled={!selectedDelivererId || availableDeliverers.length === 0}
-            >
-              Atribuir e Enviar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default AdminOrders;
-
+            <p className="text-sm text-gray-600">Total de Pedido
