@@ -585,6 +585,7 @@ const AdminOrders = () => {
                   <SelectValue placeholder="Selecione um entregador" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* CORREÇÃO AQUI: Renderiza um div ou p em vez de SelectItem para a mensagem de "nenhum encontrado" */}
                   {availableDeliverers.length > 0 ? (
                     availableDeliverers.map((deliverer) => (
                       <SelectItem key={deliverer.id} value={deliverer.id}>
@@ -592,9 +593,9 @@ const AdminOrders = () => {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <div className="px-4 py-2 text-sm text-gray-500">
                       Nenhum entregador ativo disponível.
-                    </SelectItem>
+                    </div>
                   )}
                 </SelectContent>
               </Select>
@@ -626,4 +627,3 @@ const AdminOrders = () => {
 };
 
 export default AdminOrders;
-
