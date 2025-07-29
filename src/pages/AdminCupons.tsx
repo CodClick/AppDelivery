@@ -18,7 +18,8 @@ import { Switch } from "@/components/ui/switch"; // Importe o componente Switch
 import { useEmpresa } from "@/hooks/useEmpresa";
 
 export default function AdminCupons() {
-  const { empresa, loading, error } = useEmpresa(); // Adicione esta linha
+  const { empresa, loading, error } = useEmpresa(); // <-- Certifique-se de que o hook retorna loading e error
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [cupons, setCupons] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -223,13 +224,15 @@ export default function AdminCupons() {
     }
   };
 
-  return (
+ return (
     <div className="p-6 max-w-4xl mx-auto font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Cupons de Desconto</h1>
-        {empresa?.nome && (
+        {loading && <p className="text-gray-500 text-lg mt-1">Carregando nome da empresa...</p>}
+        {error && <p className="text-red-500 text-lg mt-1">Erro ao carregar empresa.</p>}
+        {!loading && !error && empresa?.nome && (
             <p className="text-gray-600 text-lg mt-1">{empresa.nome}</p>
-          )}
+        )}
         <div className="flex gap-2 items-center">
           <Button
             onClick={() => navigate("/admin-dashboard")}
