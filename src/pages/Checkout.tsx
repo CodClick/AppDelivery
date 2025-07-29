@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react"; // Adicionado useContext
+import React, { useState, useContext } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { fetchAddressByCep } from "@/services/cepService";
 
-// IMPORTANTE: Substitua esta linha pela importação do seu contexto de autenticação/empresa real
-// Exemplo: import { useAuth } from "@/contexts/AuthContext";
-// Ou: import { useRestaurantContext } from "@/contexts/RestaurantContext";
-// Por enquanto, vou simular um hook para que o código compile:
-const useAuth = () => {
-  // Simulação: Em um aplicativo real, isso viria do seu estado de autenticação
-  // Ex: const { user } = useContext(AuthContext);
-  // return { user: { empresa_id: "67ac5adf-02a7-4c22-8ec3-68c463323e35" } }; // Substitua pelo ID real da empresa logada
-  // Ou, se você já tem um hook que fornece o ID da empresa:
-  // const { empresaId } = useMyCompanyHook(); return { user: { empresa_id: empresaId } };
-  return { user: { empresa_id: "67ac5adf-02a7-4c22-8ec3-68c463323e35" } }; // REMOVA ESTA LINHA E USE SEU CONTEXTO REAL
-};
+// IMPORTANTE: Agora importamos o useAuth do seu AuthContext real
+import { useAuth } from "@/contexts/AuthContext"; // <--- CORREÇÃO AQUI: Importação do seu AuthContext real
+
+// REMOVIDO: O hook useAuth simulado foi removido daqui.
 
 
 const Checkout = () => {
@@ -38,7 +30,7 @@ const Checkout = () => {
 
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth(); // Usando o hook simulado/real para obter o usuário logado
+  const { currentUser } = useAuth(); // Usando o hook useAuth real para obter o currentUser logado
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -85,8 +77,9 @@ const Checkout = () => {
     setIsLoading(true);
 
     // Validação para garantir que o empresa_id está disponível
-    if (!user || !user.empresa_id) {
-      console.error("handleSubmit: empresa_id não encontrado no usuário logado.");
+    // O empresa_id no currentUser do AuthContext vem do perfil do usuário no Supabase
+    if (!currentUser || !currentUser.id) { // O ID do usuário logado é o ID do perfil no Supabase
+      console.error("handleSubmit: ID do usuário logado (empresa_id) não encontrado.");
       toast({
         title: "Erro de Autenticação",
         description: "Não foi possível identificar a empresa. Por favor, faça login novamente.",
@@ -95,9 +88,17 @@ const Checkout = () => {
       setIsLoading(false);
       return;
     }
+    
+    // O empresa_id deve ser buscado do perfil do usuário logado no Supabase.
+    // Assumindo que o perfil do usuário logado (que é o dono da empresa)
+    // tem um campo 'empresa_id' ou que o 'id' do currentUser é o 'empresa_id'
+    // Se o 'empresa_id' estiver diretamente no objeto currentUser (como 'currentUser.empresa_id'), use-o.
+    // Se o 'id' do currentUser for o 'empresa_id' (o que parece ser o caso pelo seu log anterior), use-o.
+    const empresaIdDoUsuarioLogado = currentUser.id; // <--- AQUI ESTÁ A CHAVE!
 
     try {
-      const fullAddress = `${street}, ${number}${complement ? `, ${complement}` : ""} - ${neighborhood}, ${city} - ${state}`;
+      // A variável fullAddress não é usada no objeto address, mas mantida para referência/logs se necessário.
+      // const fullAddress = `${street}, ${number}${complement ? `, ${complement}` : ""} - ${neighborhood}, ${city} - ${state}`;
 
       console.log("=== CHECKOUT SUBMIT ===");
       console.log("Itens do carrinho:", cartItems);
@@ -119,14 +120,14 @@ const Checkout = () => {
         address: { // Objeto de endereço detalhado
           street,
           number,
-          complement,
+          complement: complement || null, // Garante null em vez de ""
           neighborhood,
           city,
           state,
           zipCode: cep.replace(/\D/g, '') // Garante que o CEP seja salvo sem formatação
         },
         paymentMethod,
-        observations,
+        observations: observations || null, // Garante null em vez de ""
         items: cartItems.map(item => ({
           menuItemId: item.id,
           name: item.name,
@@ -140,7 +141,7 @@ const Checkout = () => {
         couponCode: appliedCoupon ? appliedCoupon.nome : null,
         couponType: appliedCoupon ? appliedCoupon.tipo : null,
         couponValue: appliedCoupon ? appliedCoupon.valor : null,
-        empresa_id: user.empresa_id, // <--- AQUI ESTÁ A CORREÇÃO CRÍTICA!
+        empresa_id: empresaIdDoUsuarioLogado, // <--- AQUI ESTÁ A CORREÇÃO CRÍTICA!
       };
 
       console.log("[CHECKOUT] Dados do pedido sendo enviados:", JSON.stringify(orderData, null, 2));
@@ -310,7 +311,7 @@ const Checkout = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Processando..." : `Finalizar Pedido - R$ ${finalTotal.toFixed(2)}`} {/* <--- Usa finalTotal aqui */}
+                {isLoading ? "Processando..." : `Finalizar Pedido - R$ ${finalTotal.toFixed(2)}`}
               </Button>
             </form>
           </CardContent>
