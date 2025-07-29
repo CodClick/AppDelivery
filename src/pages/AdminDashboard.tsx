@@ -176,7 +176,7 @@ const AdminDashboard = () => {
             </div>
             <CardTitle className="text-xl">Gerenciar Entregadores</CardTitle>
             <CardDescription>
-              Visualize, ative/desative e adicione entregadores
+              Cadastre, Visualize, Edite, Ative ou Desative Entregadores
             </CardDescription>
           </CardHeader>
           <CardContent>
