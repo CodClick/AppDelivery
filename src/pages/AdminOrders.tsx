@@ -513,4 +513,117 @@ const AdminOrders = () => {
       <div className="mt-8 p-4 bg-gray-100 rounded-lg border-t-4 border-blue-500">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="text-center">
-            <p className="text-sm text-gray-600">Total de Pedido
+            <p className="text-sm text-gray-600">Total de Pedidos no Período</p>
+            <p className="text-2xl font-bold text-blue-600">{totalOrders}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-600">Valor Total das Vendas</p>
+            <p className="text-2xl font-bold text-green-600">R$ {totalSales.toFixed(2)}</p>
+          </div>
+        </div>
+        {dateRange?.from && (
+          <div className="text-center mt-2 text-sm text-gray-500">
+            Período: {dateRange.from.toLocaleDateString('pt-BR')}
+            {dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() && ` até ${dateRange.to.toLocaleDateString('pt-BR')}`}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Detalhes do Pedido (existente) */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Pedido</DialogTitle>
+            <DialogDescription>
+              Visualize e atualize o status do pedido
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <OrderDetails
+              order={selectedOrder}
+              onUpdateStatus={handleUpdateOrderStatus}
+              // --- PASSA AS INFORMAÇÕES DO CUPOM PARA O ORDERDETAILS ---
+              discountAmount={selectedOrder.discountAmount || 0}
+              couponCode={selectedOrder.couponCode}
+              couponType={selectedOrder.couponType}
+              couponValue={selectedOrder.couponValue}
+              // --- FIM DOS NOVOS PROPS ---
+            />
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* NOVO Modal de Seleção de Entregador */}
+      <Dialog open={isDelivererSelectionModalOpen} onOpenChange={setIsDelivererSelectionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir Entregador</DialogTitle>
+            <DialogDescription>
+              Selecione o entregador responsável por este pedido.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label htmlFor="deliverer-select" className="text-sm font-medium mb-2 block">
+              Entregador:
+            </label>
+            {loadingDeliverers ? (
+              <p className="text-gray-500">Carregando entregadores...</p>
+            ) : (
+              <Select
+                value={selectedDelivererId}
+                onValueChange={setSelectedDelivererId}
+                disabled={availableDeliverers.length === 0} // Desabilita se não houver entregadores
+              >
+                <SelectTrigger id="deliverer-select" className="w-full">
+                  <SelectValue placeholder="Selecione um entregador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDeliverers.length > 0 ? (
+                    availableDeliverers.map((deliverer) => (
+                      <SelectItem key={deliverer.id} value={deliverer.id}>
+                        {deliverer.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      Nenhum entregador ativo disponível.
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {availableDeliverers.length === 0 && !loadingDeliverers && (
+              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'users'.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              console.log("Modal de seleção de entregador: Cancelado.");
+              setIsDelivererSelectionModalOpen(false);
+              setOrderToAssignDeliverer(null); // Limpa o pedido em atribuição
+              setSelectedDelivererId(""); // Limpa o entregador selecionado
+            }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAssignDelivererAndDeliver}
+              disabled={!selectedDelivererId || availableDeliverers.length === 0 || loadingDeliverers}
+            >
+              Atribuir e Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default AdminOrders;
+
