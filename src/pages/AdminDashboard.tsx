@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator, Percent, Users } from "lucide-react"; // Adicionado Users icon
+import { ClipboardList, Settings, LogOut, ArrowLeft, Calculator, Percent, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog, // Importado para o modal
+  Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -20,8 +20,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useProtectPage } from "@/hooks/useProtectPage";
 import { useAuthState } from "@/hooks/useAuthState";
-import { useEmpresa } from "@/hooks/useEmpresa";
-import DelivererManagementModal from "@/components/DelivererManagementModal"; // Importa o novo componente do modal
+import { useEmpresa } from "@/hooks/useEmpresa"; // Certifique-se de que useEmpresa está importado corretamente
+import DelivererManagementModal from "@/components/DelivererManagementModal";
 
 const AdminDashboard = () => {
   useProtectPage("admin");
@@ -29,9 +29,37 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { logOut } = useAuth();
   const { user } = useAuthState();
-  const { empresa } = useEmpresa(user?.id ?? null); // <- agora está dentro do componente!
+  // Assumindo que useEmpresa retorna 'empresa' e um estado 'loading'
+  const { empresa, loading: empresaLoading } = useEmpresa(user?.id ?? null);
 
-  const [isDelivererModalOpen, setIsDelivererModalOpen] = useState(false); // Estado para controlar a abertura do modal de entregadores
+  const [isDelivererModalOpen, setIsDelivererModalOpen] = useState(false);
+
+  // Log para depuração do estado da empresa
+  useEffect(() => {
+    console.log("AdminDashboard: Estado da empresa atualizado.");
+    console.log("AdminDashboard: user.id:", user?.id);
+    console.log("AdminDashboard: empresaLoading:", empresaLoading);
+    console.log("AdminDashboard: empresa:", empresa);
+    console.log("AdminDashboard: empresa.id:", empresa?.id);
+  }, [user, empresa, empresaLoading]);
+
+
+  // Função para abrir o modal de entregadores, verificando se o empresaId está disponível
+  const handleOpenDelivererModal = () => {
+    if (empresaLoading) {
+      console.log("AdminDashboard: Empresa ainda carregando, não abrindo modal.");
+      // Opcional: mostrar um toast informando que os dados da empresa ainda estão carregando
+      return;
+    }
+    if (!empresa?.id) {
+      console.warn("AdminDashboard: empresa.id não disponível, não é possível abrir o modal de entregadores.");
+      // Opcional: mostrar um toast informando que o ID da empresa não foi encontrado
+      return;
+    }
+    console.log("AdminDashboard: Abrindo modal de entregadores com empresaId:", empresa.id);
+    setIsDelivererModalOpen(true);
+  };
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -134,7 +162,7 @@ const AdminDashboard = () => {
         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-orange-100 rounded-full w-fit">
-              <Users className="h-8 w-8 text-orange-600" /> {/* Ícone de usuários */}
+              <Users className="h-8 w-8 text-orange-600" />
             </div>
             <CardTitle className="text-xl">Gerenciar Entregadores</CardTitle>
             <CardDescription>
@@ -142,15 +170,19 @@ const AdminDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setIsDelivererModalOpen(true)} className="w-full">
-              Acessar Entregadores
+            <Button
+              onClick={handleOpenDelivererModal} // Chama a nova função
+              className="w-full"
+              disabled={empresaLoading || !empresa?.id} // Desabilita o botão enquanto carrega ou se empresaId não estiver disponível
+            >
+              {empresaLoading ? "Carregando..." : "Acessar Entregadores"}
             </Button>
           </CardContent>
         </Card>
         {/* FIM DO NOVO CARD */}
 
       </div>
-      
+
 
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Bem-vindo, Administrador!</h2>
@@ -162,11 +194,14 @@ const AdminDashboard = () => {
       </div>
 
       {/* Modal de Gerenciamento de Entregadores */}
-      <DelivererManagementModal
-        isOpen={isDelivererModalOpen}
-        onClose={() => setIsDelivererModalOpen(false)}
-        empresaId={empresa?.id || null} // Passa o empresa_id para o modal
-      />
+      {/* Renderiza o modal apenas se estiver aberto E o empresaId estiver disponível */}
+      {isDelivererModalOpen && empresa?.id && (
+        <DelivererManagementModal
+          isOpen={isDelivererModalOpen}
+          onClose={() => setIsDelivererModalOpen(false)}
+          empresaId={empresa.id} // Passa o empresa.id garantido
+        />
+      )}
     </div>
   );
 };
