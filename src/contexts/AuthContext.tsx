@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 interface CustomUser extends User {
   role?: string;
+  empresa_id?: string; // Adicionado: Propriedade para armazenar o ID da empresa
 }
 
 interface AuthContextType {
@@ -39,25 +40,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const fetchAndSetUser = async () => {
-      // Inicia como true, mas será setado para false no final, independente do resultado
-      // setLoading(true); // Já é true por padrão ao iniciar o componente ou após logout
+      setLoading(true); // Garante que o loading seja true enquanto busca os dados do usuário
 
       if (supabaseUser) {
+        // Busca o role e o empresa_id do perfil do usuário na tabela 'usuarios'
         const { data, error } = await supabase
           .from("usuarios")
-          .select("role")
+          .select("role, empresa_id") // Seleciona também o empresa_id
           .eq("id", supabaseUser.id)
           .single();
 
-        if (data?.role) {
-          const updatedUser: CustomUser = { ...supabaseUser, role: data.role };
+        if (data) { // Se os dados do perfil foram encontrados
+          const updatedUser: CustomUser = {
+            ...supabaseUser,
+            role: data.role,
+            empresa_id: data.empresa_id, // Atribui o empresa_id ao objeto currentUser
+          };
           setCurrentUser(updatedUser);
           setUserRole(data.role);
-          console.log("AuthContext: Usuário carregado com role:", data.role);
+          console.log("AuthContext: Usuário carregado com role:", data.role, "e empresa_id:", data.empresa_id);
         } else {
-          setCurrentUser(supabaseUser as CustomUser);
+          // Se o perfil não foi encontrado ou não tem role/empresa_id
+          setCurrentUser(supabaseUser as CustomUser); // Ainda define o usuário Supabase básico
           setUserRole(null);
-          console.warn("Role não encontrada para o usuário:", supabaseUser.id, error?.message);
+          console.warn("AuthContext: Role ou empresa_id não encontrados para o usuário:", supabaseUser.id, error?.message);
         }
       } else {
         setCurrentUser(null);
@@ -89,28 +95,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-        setLoading(true);
-        const result = await authSignIn(email, password); // result agora deve conter { user, session }
-        // IMPORTANTE: Remova ou comente esta toast de sucesso por enquanto.
-        // Ela pode estar sendo disparada antes que a página redirecione,
-        // ou pode ser redundante e causar confusão.
-        // toast({ title: "Login realizado", description: "Você entrou com sucesso." });
-        return result;
+      setLoading(true);
+      const result = await authSignIn(email, password); // result agora deve conter { user, session }
+      // IMPORTANTE: Remova ou comente esta toast de sucesso por enquanto.
+      // Ela pode estar sendo disparada antes que a página redirecione,
+      // ou pode ser redundante e causar confusão.
+      // toast({ title: "Login realizado", description: "Você entrou com sucesso." });
+      return result;
     } catch (error: any) {
-        console.error("AuthContext: Erro capturado no signIn:", error.message); // Verifique esta mensagem no console
-        toast({
-            title: "Erro ao fazer login",
-            description: error.message,
-            variant: "destructive",
-        });
-        throw error;
+      console.error("AuthContext: Erro capturado no signIn:", error.message); // Verifique esta mensagem no console
+      toast({
+        title: "Erro ao fazer login",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
     } finally {
-        // O useEffect que atualiza o currentUser e loading será disparado
-        // pelo onAuthStateChange ou pela atualização do session/user no useAuthState.
+      // O useEffect que atualiza o currentUser e loading será disparado
+      // pelo onAuthStateChange ou pela atualização do session/user no useAuthState.
     }
-};
+  };
 
   const logOut = async () => {
     try {
