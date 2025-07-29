@@ -87,7 +87,7 @@ const AdminDashboard = () => {
             className="flex items-center gap-2"
           >
             <ArrowLeft size={16} />
-            Voltar ao Cardápio
+            Cardápio
           </Button>
           <Button
             onClick={logOut}
