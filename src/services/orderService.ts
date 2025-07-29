@@ -85,6 +85,12 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
     console.log(`Total final recebido do frontend (totalAmount): R$ ${orderData.totalAmount?.toFixed(2)}`);
     console.log(`Desconto recebido do frontend (discountAmount): R$ ${orderData.discountAmount?.toFixed(2)}`);
 
+    // Determina o status inicial do pedido
+    const initialStatus = orderData.status || "pending"; // Usa o status fornecido ou "pending"
+
+    // Determina o deliveredAt se o status inicial for "delivered"
+    const initialDeliveredAt = initialStatus === "delivered" ? serverTimestamp() : null;
+
     // Criar o documento do pedido
     const orderToSave = {
       customerName: orderData.customerName,
@@ -93,7 +99,7 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       paymentMethod: orderData.paymentMethod,
       observations: orderData.observations || "",
       items: orderItems,
-      status: "pending",
+      status: initialStatus, // Usa o status determinado
       total: orderData.totalAmount || calculatedSubtotal,
       
       discountAmount: orderData.discountAmount || 0,
@@ -101,12 +107,12 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       couponType: orderData.couponType || null,
       couponValue: orderData.couponValue || null,
       entregador_id: orderData.entregador_id || null,
-      // CORREÇÃO AQUI: Garante que empresa_id seja uma string ou null, nunca undefined
       empresa_id: orderData.empresa_id || null, 
-      paymentStatus: orderData.paymentStatus || "a_receber", // Garante que paymentStatus seja salvo
+      paymentStatus: orderData.paymentStatus || "a_receber", 
 
-      createdAt: serverTimestamp(), // Usa serverTimestamp
-      updatedAt: serverTimestamp() // Usa serverTimestamp
+      createdAt: serverTimestamp(), 
+      updatedAt: serverTimestamp(),
+      deliveredAt: initialDeliveredAt, // Define deliveredAt na criação se aplicável
     };
 
     console.log("\n=== SALVANDO PEDIDO NO FIRESTORE ===");
@@ -116,7 +122,6 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
 
     console.log("Pedido salvo com ID:", docRef.id);
 
-    // Para retornar o objeto Order completo com ID e Timestamps convertidos
     const newOrderSnap = await getDoc(docRef);
     const newOrderData = newOrderSnap.data() as Record<string, any>;
 
@@ -125,7 +130,6 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<Order>
       ...newOrderData,
       createdAt: formatTimestamp(newOrderData.createdAt),
       updatedAt: formatTimestamp(newOrderData.updatedAt),
-      // deliveredAt não estará presente na criação, mas é bom manter a consistência
       deliveredAt: formatTimestamp(newOrderData.deliveredAt) || undefined, 
     } as Order;
   } catch (error) {
@@ -148,7 +152,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       ...orderData,
       createdAt: formatTimestamp(orderData.createdAt),
       updatedAt: formatTimestamp(orderData.updatedAt),
-      deliveredAt: formatTimestamp(orderData.deliveredAt) || undefined, // Mapeia deliveredAt
+      deliveredAt: formatTimestamp(orderData.deliveredAt) || undefined, 
       entregador_id: orderData.entregador_id || null,
       empresa_id: orderData.empresa_id || null,
     } as Order;
@@ -161,7 +165,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 // Obter pedidos por número de telefone
 export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
   try {
-    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); // Renomeado para evitar conflito
+    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); 
     const q = query( 
       ordersCollectionRef, 
       where("customerPhone", "==", phone),
@@ -176,7 +180,7 @@ export const getOrdersByPhone = async (phone: string): Promise<Order[]> => {
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
-        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, // Mapeia deliveredAt
+        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, 
         entregador_id: data.entregador_id || null,
         empresa_id: data.empresa_id || null,
       } as Order;
@@ -197,16 +201,14 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
     console.log("Buscando pedidos para hoje:", today.toISOString());
     console.log("Status filtro:", status);
     
-    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); // Renomeado para evitar conflito
+    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); 
     let q;
     
-    // A lógica de filtro por status aqui está um pouco redundante,
-    // o filtro WHERE pode ser adicionado diretamente se status for diferente de "all"
     if (status && status !== "all") {
       q = query(
         ordersCollectionRef,
         where("createdAt", ">=", todayTimestamp),
-        where("status", "==", status), // Adicionado filtro de status diretamente na query
+        where("status", "==", status), 
         orderBy("createdAt", "desc")
       );
     } else {
@@ -230,7 +232,7 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
-        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, // Mapeia deliveredAt
+        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, 
         entregador_id: data.entregador_id || null,
         empresa_id: data.empresa_id || null,
       } as Order;
@@ -260,7 +262,7 @@ export const getOrdersByDateRange = async (
     console.log("Buscando pedidos no intervalo:", start.toISOString(), "até", end.toISOString());
     console.log("Status filtro:", status);
     
-    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); // Renomeado para evitar conflito
+    const ordersCollectionRef = collection(db, ORDERS_COLLECTION); 
     
     let q = query(
       ordersCollectionRef,
@@ -270,7 +272,7 @@ export const getOrdersByDateRange = async (
     );
     
     if (status && status !== "all") {
-      q = query(q, where("status", "==", status)); // Adicionado filtro de status diretamente na query
+      q = query(q, where("status", "==", status)); 
     }
     
     console.log("Executando consulta ao Firestore...");
@@ -286,7 +288,7 @@ export const getOrdersByDateRange = async (
         ...data,
         createdAt: formatTimestamp(data.createdAt),
         updatedAt: formatTimestamp(data.updatedAt),
-        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, // Mapeia deliveredAt
+        deliveredAt: formatTimestamp(data.deliveredAt) || undefined, 
         entregador_id: data.entregador_id || null,
         empresa_id: data.empresa_id || null,
       } as Order;
@@ -305,27 +307,23 @@ export const updateOrder = async (orderId: string, updates: UpdateOrderRequest):
     
     if (!currentOrderSnap.exists()) return null;
     
-    const currentOrder = currentOrderSnap.data() as Order; // Obtém os dados atuais do pedido
+    const currentOrder = currentOrderSnap.data() as Order; 
 
     const dataToUpdate: any = {
       ...updates,
-      updatedAt: serverTimestamp() // Usa serverTimestamp para updatedAt
+      updatedAt: serverTimestamp() 
     };
 
-    // Se o status está sendo alterado para 'delivered', registra o timestamp
     if (updates.status === "delivered" && currentOrder.status !== "delivered") {
       dataToUpdate.deliveredAt = serverTimestamp();
       console.log(`updateOrder: Registrando deliveredAt para o pedido ${orderId}.`);
     } else if (updates.status !== "delivered" && currentOrder.deliveredAt) {
-      // Se o status for alterado de 'delivered' para outro, remove deliveredAt (opcional, mas boa prática)
-      // Isso é importante se você quiser que deliveredAt só exista quando o status for 'delivered'
       dataToUpdate.deliveredAt = null; 
       console.log(`updateOrder: Removendo deliveredAt para o pedido ${orderId}.`);
     }
     
     await updateDoc(orderRef, dataToUpdate);
     
-    // Retorna o pedido atualizado para manter o estado no frontend
     const updatedDocSnap = await getDoc(orderRef);
     const updatedData = updatedDocSnap.data() as Record<string, any>;
 
@@ -334,7 +332,7 @@ export const updateOrder = async (orderId: string, updates: UpdateOrderRequest):
       ...updatedData,
       createdAt: formatTimestamp(updatedData.createdAt),
       updatedAt: formatTimestamp(updatedData.updatedAt),
-      deliveredAt: formatTimestamp(updatedData.deliveredAt) || undefined, // Mapeia deliveredAt
+      deliveredAt: formatTimestamp(updatedData.deliveredAt) || undefined, 
       entregador_id: updatedData.entregador_id || null,
       empresa_id: updatedData.empresa_id || null,
     } as Order;
@@ -346,18 +344,18 @@ export const updateOrder = async (orderId: string, updates: UpdateOrderRequest):
 
 // Função auxiliar para formatar timestamps do Firestore
 const formatTimestamp = (timestamp: any): string | Timestamp | Date | undefined => {
-  if (!timestamp) return undefined; // Retorna undefined se não houver timestamp
+  if (!timestamp) return undefined; 
 
   if (timestamp instanceof Timestamp) {
-    return timestamp.toDate(); // Retorna um objeto Date
+    return timestamp.toDate(); 
   }
   if (typeof timestamp === 'string') {
     const date = new Date(timestamp);
-    return isNaN(date.getTime()) ? undefined : date; // Tenta converter string para Date
+    return isNaN(date.getTime()) ? undefined : date; 
   }
   if (timestamp instanceof Date) {
-    return timestamp; // Já é um objeto Date
+    return timestamp; 
   }
   
-  return undefined; // Para qualquer outro caso inesperado
+  return undefined; 
 };
