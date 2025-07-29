@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react"; // Adicionado useContext
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { fetchAddressByCep } from "@/services/cepService";
 
+// IMPORTANTE: Substitua esta linha pela importação do seu contexto de autenticação/empresa real
+// Exemplo: import { useAuth } from "@/contexts/AuthContext";
+// Ou: import { useRestaurantContext } from "@/contexts/RestaurantContext";
+// Por enquanto, vou simular um hook para que o código compile:
+const useAuth = () => {
+  // Simulação: Em um aplicativo real, isso viria do seu estado de autenticação
+  // Ex: const { user } = useContext(AuthContext);
+  // return { user: { empresa_id: "67ac5adf-02a7-4c22-8ec3-68c463323e35" } }; // Substitua pelo ID real da empresa logada
+  // Ou, se você já tem um hook que fornece o ID da empresa:
+  // const { empresaId } = useMyCompanyHook(); return { user: { empresa_id: empresaId } };
+  return { user: { empresa_id: "67ac5adf-02a7-4c22-8ec3-68c463323e35" } }; // REMOVA ESTA LINHA E USE SEU CONTEXTO REAL
+};
+
+
 const Checkout = () => {
   const {
     cartItems,
@@ -24,6 +38,7 @@ const Checkout = () => {
 
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Usando o hook simulado/real para obter o usuário logado
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -69,6 +84,18 @@ const Checkout = () => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Validação para garantir que o empresa_id está disponível
+    if (!user || !user.empresa_id) {
+      console.error("handleSubmit: empresa_id não encontrado no usuário logado.");
+      toast({
+        title: "Erro de Autenticação",
+        description: "Não foi possível identificar a empresa. Por favor, faça login novamente.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const fullAddress = `${street}, ${number}${complement ? `, ${complement}` : ""} - ${neighborhood}, ${city} - ${state}`;
 
@@ -89,7 +116,15 @@ const Checkout = () => {
       const orderData = {
         customerName,
         customerPhone,
-        address: fullAddress,
+        address: { // Objeto de endereço detalhado
+          street,
+          number,
+          complement,
+          neighborhood,
+          city,
+          state,
+          zipCode: cep.replace(/\D/g, '') // Garante que o CEP seja salvo sem formatação
+        },
         paymentMethod,
         observations,
         items: cartItems.map(item => ({
@@ -100,12 +135,12 @@ const Checkout = () => {
           selectedVariations: item.selectedVariations || [],
           priceFrom: item.priceFrom || false
         })),
-        // --- NOVO: Adicionar informações do cupom e do total final ---
-        totalAmount: finalTotal, // <--- Passa o total FINAL para a ordem
+        totalAmount: finalTotal,
         discountAmount: discountAmount,
         couponCode: appliedCoupon ? appliedCoupon.nome : null,
         couponType: appliedCoupon ? appliedCoupon.tipo : null,
         couponValue: appliedCoupon ? appliedCoupon.valor : null,
+        empresa_id: user.empresa_id, // <--- AQUI ESTÁ A CORREÇÃO CRÍTICA!
       };
 
       console.log("[CHECKOUT] Dados do pedido sendo enviados:", JSON.stringify(orderData, null, 2));
