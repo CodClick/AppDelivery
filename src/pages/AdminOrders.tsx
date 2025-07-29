@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 // Importações do Firestore (mantidas para a lógica de pedidos)
 import { collection, query, where, onSnapshot, orderBy, Timestamp, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase"; // Assumindo que db é sua instância do Firestore
+import { db } => "@/lib/firebase"; // Assumindo que db é sua instância do Firestore
 
 // Importação do Supabase do arquivo centralizado
 import { supabase } from "@/lib/supabaseClient"; // Importa a instância configurada do Supabase
@@ -643,7 +643,7 @@ const AdminOrders = () => {
               </Select>
             )}
             {availableDeliverers.length === 0 && !loadingDeliverers && (
-              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'usuarios' no Supabase para o 'empresa_id' do pedido.</p> {/* Mensagem atualizada */}
+              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'usuarios' no Supabase para o 'empresa_id' do pedido.</p>
             )}
           </div>
           <DialogFooter>
