@@ -195,7 +195,7 @@ const AdminDashboard = () => {
         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-orange-100 rounded-full w-fit">
-              <Users className="h-8 w-8 text-orange-600" />
+              <Truck className="h-8 w-8 text-orange-600" />
             </div>
             <CardTitle className="text-xl">Pedidos em Rota de Entrega</CardTitle>
             <CardDescription>
