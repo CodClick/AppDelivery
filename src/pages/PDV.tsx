@@ -18,23 +18,25 @@ import { getAllVariations } from "@/services/variationService";
 import { getAllVariationGroups } from "@/services/variationGroupService";
 import { createOrder } from "@/services/orderService";
 import { MenuItem, Category, Variation, VariationGroup } from "@/types/menu";
-import { CreateOrderRequest } from "@/types/order";
+import { CreateOrderRequest, Order } from "@/types/order"; // Importa Order para tipagem do status
 import { Trash2, Plus, Minus, User, UserPlus, ClipboardList, Check, ChevronsUpDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProductVariationDialog from "@/components/ProductVariationDialog";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth"; // Importa useAuth para obter empresa_id
 
 interface Customer {
   id: string;
   name: string;
   phone: string;
-  address: string;
+  address: string; // Mantido como string, para simplificar o PDV
 }
 
 const PDV = () => {
   const { cartItems, addItem, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, cartTotal } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Obtém o usuário logado para acessar empresa_id
   
   // Estados para dados
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -156,11 +158,14 @@ const PDV = () => {
       return;
     }
 
+    // O endereço do cliente no PDV é uma string simples, mas a interface Order espera um objeto.
+    // Precisamos de um objeto Address com campos obrigatórios.
+    // Para simplificar no PDV, vamos criar um objeto Address padrão.
     const newCustomer: Customer = {
       id: Date.now().toString(),
       name: customerName.trim(),
       phone: customerPhone.trim(),
-      address: customerAddress.trim()
+      address: customerAddress.trim() // Aqui ainda é string
     };
 
     const updatedCustomers = [...customers, newCustomer];
@@ -199,15 +204,44 @@ const PDV = () => {
       return;
     }
 
+    if (!currentUser || !currentUser.empresa_id) {
+      toast({
+        title: "Erro de Autenticação",
+        description: "Não foi possível identificar a empresa do usuário logado. Faça login novamente.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessingOrder(true);
 
     try {
+      // Mapeia o endereço do cliente (string) para o formato de objeto Address esperado pela Order
+      const customerAddressObject = {
+        street: selectedCustomer.address || "Não informado",
+        number: "S/N", // Valor padrão se não tiver um campo específico no PDV
+        complement: "",
+        neighborhood: "Não informado",
+        city: "Não informado",
+        state: "NI", // NI = Não Informado
+        zipCode: "00000-000",
+      };
+
+      // Determina o status inicial com base no método de pagamento
+      let initialStatus: Order["status"] = "pending";
+      let paymentStatus: Order["paymentStatus"] = "a_receber";
+
+      if (paymentMethod === "payroll_discount") {
+        initialStatus = "delivered"; // Para "Desconto em Folha", o status final é "delivered"
+        paymentStatus = "recebido"; // E o pagamento é considerado recebido
+      }
+
       const orderData: CreateOrderRequest = {
         customerName: selectedCustomer.name,
         customerPhone: selectedCustomer.phone,
-        address: selectedCustomer.address,
+        address: customerAddressObject, // Usa o objeto Address formatado
         paymentMethod: paymentMethod,
-        observations,
+        observations: observations,
         items: cartItems.map(item => ({
           menuItemId: item.id,
           name: item.name,
@@ -215,14 +249,23 @@ const PDV = () => {
           quantity: item.quantity,
           selectedVariations: item.selectedVariations || [],
           priceFrom: item.priceFrom || false
-        }))
+        })),
+        totalAmount: cartTotal, // Passa o total do carrinho
+        empresa_id: currentUser.empresa_id, // Adiciona o empresa_id do usuário logado
+        status: initialStatus, // Define o status inicial
+        paymentStatus: paymentStatus, // Define o status de pagamento
       };
 
       const order = await createOrder(orderData);
       
       toast({
         title: "Pedido criado",
-        description: `Pedido #${order.id.substring(0, 6)} criado com sucesso!`
+        description: `Pedido #${order.id.substring(0, 6)} criado com sucesso!`,
+        action: (
+          <Button variant="outline" onClick={() => navigate('/admin-orders')}>
+            Ver Pedido
+          </Button>
+        ),
       });
       
       // Limpar formulário
@@ -508,7 +551,7 @@ const PDV = () => {
                 
                 <Button
                   onClick={processOrder}
-                  disabled={isProcessingOrder || cartItems.length === 0}
+                  disabled={isProcessingOrder || cartItems.length === 0 || !currentUser?.empresa_id}
                   className="w-full"
                   size="lg"
                 >
