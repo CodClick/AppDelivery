@@ -132,7 +132,7 @@ const AdminOrders = () => {
 
       // Consulta ao Supabase
       const { data, error } = await supabase
-        .from('users') // Nome da sua tabela de usuários no Supabase
+        .from('usuarios') // Nome da sua tabela de usuários no Supabase
         .select('id, name') // Seleciona as colunas id e name
         .eq('role', 'entregador') // Filtra por 'role' igual a 'entregador'
         .eq('status', 'ativo') // Filtra por 'status' igual a 'ativo'
