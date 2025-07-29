@@ -55,17 +55,30 @@ const Entregador = () => {
     const endTimestamp = Timestamp.fromDate(end);
 
     const ordersRef = collection(db, "orders");
-    const ordersQuery = query(
-      ordersRef,
+    
+    // Inicia a lista de condições da query
+    let conditions = [
       where("status", "==", "delivering"),
-      where("entregador_id", "==", currentUser.id), // Filtra pedidos pelo ID do entregador logado
       where("createdAt", ">=", startTimestamp),
       where("createdAt", "<=", endTimestamp),
+    ];
+
+    // Condição para filtrar por entregador_id APENAS se o usuário NÃO for admin
+    if (currentUser.role !== "admin") {
+      console.log("Entregador: Usuário não é admin, filtrando por entregador_id:", currentUser.id);
+      conditions.push(where("entregador_id", "==", currentUser.id));
+    } else {
+      console.log("Entregador: Usuário é admin, exibindo todos os pedidos 'delivering'.");
+    }
+
+    const ordersQuery = query(
+      ordersRef,
+      ...conditions, // Aplica todas as condições dinamicamente
       orderBy("status"), // Pode ser removido se todos forem 'delivering'
       orderBy("createdAt", "desc")
     );
 
-    console.log("Entregador: Configurando listener de pedidos para o entregador:", currentUser.id);
+    console.log("Entregador: Configurando listener de pedidos para o entregador/admin.");
 
     const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
       console.log("Entregador: Snapshot de pedidos recebido.");
