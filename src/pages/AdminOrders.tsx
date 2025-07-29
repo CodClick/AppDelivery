@@ -61,13 +61,7 @@ const AdminOrders = () => {
   const [loadingDeliverers, setLoadingDeliverers] = useState(false); // Novo estado de carregamento para entregadores
   // --- Fim dos novos estados ---
 
-  // AQUI É O PONTO CRÍTICO: Obtenha o empresa_id dinamicamente.
-  // EXEMPLO: Se você tem um hook ou contexto que fornece o ID da empresa do usuário logado:
-  // const { empresaId: currentEmpresaId } = useAuthContext(); // Ou useRestaurantContext(), etc.
-  // Mantenho o valor que você viu no log para debug, mas você DEVE substituir isso pela lógica real do seu app.
-  const currentEmpresaId = "67ac5adf-02a7-4c22-8ec3-68c463323e35"; 
-  console.log("AdminOrders: empresa_id sendo usado:", currentEmpresaId);
-
+  // REMOVIDO: const currentEmpresaId = "..."; // Não é mais necessário aqui, será pego do selectedOrder
 
   const today = new Date();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -260,6 +254,9 @@ const AdminOrders = () => {
       if (newStatus === "delivering" && selectedOrder?.status === "ready") {
         console.log("handleUpdateOrderStatus: Transição para 'delivering' detectada. Abrindo modal de seleção de entregador.");
         
+        // NOVO LOG: Verifica o empresa_id do pedido selecionado
+        console.log("handleUpdateOrderStatus: selectedOrder.empresa_id para busca de entregadores:", selectedOrder?.empresa_id);
+
         // Verifica se o selectedOrder e empresa_id existem antes de chamar
         if (selectedOrder && selectedOrder.empresa_id) {
           setOrderToAssignDeliverer(selectedOrder);
