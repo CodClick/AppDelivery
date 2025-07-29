@@ -18,25 +18,25 @@ import { getAllVariations } from "@/services/variationService";
 import { getAllVariationGroups } from "@/services/variationGroupService";
 import { createOrder } from "@/services/orderService";
 import { MenuItem, Category, Variation, VariationGroup } from "@/types/menu";
-import { CreateOrderRequest, Order } from "@/types/order"; // Importa Order para tipagem do status
+import { CreateOrderRequest, Order } from "@/types/order"; 
 import { Trash2, Plus, Minus, User, UserPlus, ClipboardList, Check, ChevronsUpDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProductVariationDialog from "@/components/ProductVariationDialog";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth"; // Importa useAuth para obter empresa_id
+import { useAuth } from "@/hooks/useAuth"; 
 
 interface Customer {
   id: string;
   name: string;
   phone: string;
-  address: string; // Mantido como string, para simplificar o PDV
+  address: string; 
 }
 
 const PDV = () => {
   const { cartItems, addItem, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, cartTotal } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { currentUser } = useAuth(); // Obtém o usuário logado para acessar empresa_id
+  const { currentUser } = useAuth(); 
   
   // Estados para dados
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -158,14 +158,11 @@ const PDV = () => {
       return;
     }
 
-    // O endereço do cliente no PDV é uma string simples, mas a interface Order espera um objeto.
-    // Precisamos de um objeto Address com campos obrigatórios.
-    // Para simplificar no PDV, vamos criar um objeto Address padrão.
     const newCustomer: Customer = {
       id: Date.now().toString(),
       name: customerName.trim(),
       phone: customerPhone.trim(),
-      address: customerAddress.trim() // Aqui ainda é string
+      address: customerAddress.trim()
     };
 
     const updatedCustomers = [...customers, newCustomer];
@@ -216,30 +213,34 @@ const PDV = () => {
     setIsProcessingOrder(true);
 
     try {
-      // Mapeia o endereço do cliente (string) para o formato de objeto Address esperado pela Order
       const customerAddressObject = {
         street: selectedCustomer.address || "Não informado",
-        number: "S/N", // Valor padrão se não tiver um campo específico no PDV
+        number: "S/N", 
         complement: "",
         neighborhood: "Não informado",
         city: "Não informado",
-        state: "NI", // NI = Não Informado
+        state: "NI", 
         zipCode: "00000-000",
       };
 
-      // Determina o status inicial com base no método de pagamento
+      // Determina o status inicial e o status de pagamento
       let initialStatus: Order["status"] = "pending";
-      let paymentStatus: Order["paymentStatus"] = "a_receber";
+      let paymentStatus: Order["paymentStatus"] = "a_receber"; // Padrão "a_receber"
 
       if (paymentMethod === "payroll_discount") {
         initialStatus = "delivered"; // Para "Desconto em Folha", o status final é "delivered"
-        paymentStatus = "recebido"; // E o pagamento é considerado recebido
+        // O paymentStatus permanece "a_receber" para que apareça no filtro "A descontar"
+        paymentStatus = "a_receber"; 
+      } else if (paymentMethod === "pix" || paymentMethod === "card") {
+        // Para PIX e Cartão, o pagamento é considerado recebido no momento do pedido (exemplo)
+        paymentStatus = "recebido";
       }
+      // Para 'cash', paymentStatus já é 'a_receber' por padrão
 
       const orderData: CreateOrderRequest = {
         customerName: selectedCustomer.name,
         customerPhone: selectedCustomer.phone,
-        address: customerAddressObject, // Usa o objeto Address formatado
+        address: customerAddressObject, 
         paymentMethod: paymentMethod,
         observations: observations,
         items: cartItems.map(item => ({
@@ -250,10 +251,10 @@ const PDV = () => {
           selectedVariations: item.selectedVariations || [],
           priceFrom: item.priceFrom || false
         })),
-        totalAmount: cartTotal, // Passa o total do carrinho
-        empresa_id: currentUser.empresa_id, // Adiciona o empresa_id do usuário logado
-        status: initialStatus, // Define o status inicial
-        paymentStatus: paymentStatus, // Define o status de pagamento
+        totalAmount: cartTotal, 
+        empresa_id: currentUser.empresa_id, 
+        status: initialStatus, 
+        paymentStatus: paymentStatus, 
       };
 
       const order = await createOrder(orderData);
