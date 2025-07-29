@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 // Importações do Firestore (mantidas para a lógica de pedidos)
 import { collection, query, where, onSnapshot, orderBy, Timestamp, getDocs } from "firebase/firestore";
-import { db } => "@/lib/firebase"; // Assumindo que db é sua instância do Firestore
+import { db } from "@/lib/firebase"; // Assumindo que db é sua instância do Firestore
 
 // Importação do Supabase do arquivo centralizado
 import { supabase } from "@/lib/supabaseClient"; // Importa a instância configurada do Supabase
