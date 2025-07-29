@@ -41,15 +41,15 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { getNextStatusOptions, hasReceivedPayment } from "@/services/orderStatusService";
-import { Separator } from "@/components/ui/separator"; // Certifique-se de que Separator está importado
-import { Label } from "@/components/ui/label"; // Certifique-se de que Label está importado
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // Certifique-se de que Select está importado
+} from "@/components/ui/select";
 
 
 interface OrderDetailsProps {
@@ -233,9 +233,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
   // Função wrapper para atualizar o status principal do pedido
   const handleUpdateStatus = (orderId: string, status: Order["status"], cancellationReasonValue?: string) => {
     console.log("Atualizando status principal para:", status);
-    const updatedOrder: Order & { cancellationReason?: string } = { ...order, status };
+    const updatedOrder: Order & { cancellationOrderReason?: string } = { ...order, status }; // Corrigido para cancellationOrderReason
     if (status === "cancelled" && cancellationReasonValue) {
-      updatedOrder.cancellationReason = cancellationReasonValue;
+      updatedOrder.cancellationOrderReason = cancellationReasonValue; // Corrigido para cancellationOrderReason
     }
     sendOrderStatusWebhook(updatedOrder);
     onUpdateStatus(orderId, status, cancellationReasonValue);
