@@ -593,10 +593,11 @@ const AdminOrders = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Atribuir Entregador</DialogTitle>
+            {/* CORREÇÃO AQUI: Removida a tag </DialogDescription> duplicada */}
             <DialogDescription>
               Selecione o entregador responsável por este pedido.
             </DialogDescription>
-          </DialogDescription>
+          </DialogHeader>
           <div className="py-4">
             <label htmlFor="deliverer-select" className="text-sm font-medium mb-2 block">
               Entregador:
