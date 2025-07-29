@@ -33,7 +33,8 @@ export interface Order {
   couponCode?: string;
   couponType?: "percentage" | "fixed";
   couponValue?: number;
-  entregador_id?: string; // <--- Adicione esta linha aqui!
+  entregador_id?: string;
+  empresa_id: string
 }
 
 // Também atualize CreateOrderRequest e UpdateOrderRequest
