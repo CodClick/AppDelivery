@@ -37,11 +37,10 @@ import {
 } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/DateRangePicker";
 
-// Definindo um tipo básico para o entregador, assumindo que você tem um tipo User mais completo em outro lugar.
-// Se você já tem um tipo User, pode importá-lo.
+// Definindo um tipo básico para o entregador, agora com 'nome'
 interface Deliverer {
   id: string;
-  name: string;
+  nome: string; // Alterado de 'name' para 'nome'
 }
 
 const AdminOrders = () => {
@@ -65,7 +64,7 @@ const AdminOrders = () => {
   // AQUI É O PONTO CRÍTICO: Obtenha o empresa_id dinamicamente.
   // EXEMPLO: Se você tem um hook ou contexto que fornece o ID da empresa do usuário logado:
   // const { empresaId: currentEmpresaId } = useAuthContext(); // Ou useRestaurantContext(), etc.
-  // Por enquanto, mantenho o valor que você viu no log para debug, mas você DEVE substituir isso.
+  // Mantenho o valor que você viu no log para debug, mas você DEVE substituir isso pela lógica real do seu app.
   const currentEmpresaId = "67ac5adf-02a7-4c22-8ec3-68c463323e35"; 
   console.log("AdminOrders: empresa_id sendo usado:", currentEmpresaId);
 
@@ -111,8 +110,8 @@ const AdminOrders = () => {
     }
   };
 
-  // Função para buscar entregadores ativos (AGORA USA SUPABASE)
-  const fetchAvailableDeliverers = async () => {
+  // Função para buscar entregadores ativos (AGORA USA SUPABASE com empresa_id dinâmico e nomes de colunas corrigidos)
+  const fetchAvailableDeliverers = async (empresaId: string) => { // Recebe empresaId como argumento
     console.log("fetchAvailableDeliverers: Iniciando busca de entregadores (Supabase)...");
     setLoadingDeliverers(true); // Ativa o estado de carregamento
     try {
@@ -128,15 +127,15 @@ const AdminOrders = () => {
       }
       
       // Log do empresa_id que será usado na query
-      console.log("fetchAvailableDeliverers: Filtrando entregadores por empresa_id:", currentEmpresaId);
+      console.log("fetchAvailableDeliverers: Filtrando entregadores por empresa_id:", empresaId);
 
-      // Consulta ao Supabase
+      // Consulta ao Supabase com nomes de tabela/colunas corrigidos
       const { data, error } = await supabase
         .from('usuarios') // Nome da sua tabela de usuários no Supabase
-        .select('id, nome') // Seleciona as colunas id e name
+        .select('id, nome') // Seleciona as colunas id e nome (alterado de 'name')
         .eq('role', 'entregador') // Filtra por 'role' igual a 'entregador'
-        .eq('status_entregador', 'ativo') // Filtra por 'status' igual a 'ativo'
-        .eq('empresa_id', currentEmpresaId); // Filtra pelo empresa_id atual
+        .eq('status_entregador', 'ativo') // Filtra por 'status_entregador' igual a 'ativo' (alterado de 'status')
+        .eq('empresa_id', empresaId); // Filtra pelo empresa_id recebido como argumento
 
       if (error) {
         console.error("fetchAvailableDeliverers: Erro ao buscar entregadores do Supabase:", error.message);
@@ -148,12 +147,15 @@ const AdminOrders = () => {
         throw error; // Lança o erro para ser capturado pelo catch
       }
 
+      // NOVO LOG: Mostra os dados brutos retornados pelo Supabase
+      console.log("fetchAvailableDeliverers: Dados brutos do Supabase para entregadores:", data);
+
       const deliverers: Deliverer[] = data || []; // Supabase retorna os dados diretamente em 'data'
       setAvailableDeliverers(deliverers);
 
       if (deliverers.length > 0) {
         setSelectedDelivererId(deliverers[0].id); // Seleciona o primeiro por padrão
-        console.log(`fetchAvailableDeliverers: ${deliverers.length} entregadores encontrados no Supabase. Primeiro selecionado: ${deliverers[0].name}`);
+        console.log(`fetchAvailableDeliverers: ${deliverers.length} entregadores encontrados no Supabase. Primeiro selecionado: ${deliverers[0].nome}`); // Log com 'nome'
       } else {
         setSelectedDelivererId("");
         console.log("fetchAvailableDeliverers: Nenhum entregador ativo encontrado no Supabase para esta empresa.");
@@ -257,10 +259,22 @@ const AdminOrders = () => {
       // --- Lógica para seleção de entregador ---
       if (newStatus === "delivering" && selectedOrder?.status === "ready") {
         console.log("handleUpdateOrderStatus: Transição para 'delivering' detectada. Abrindo modal de seleção de entregador.");
-        setOrderToAssignDeliverer(selectedOrder);
-        await fetchAvailableDeliverers(); // Busca os entregadores antes de abrir o modal
-        setIsDelivererSelectionModalOpen(true);
-        return; // Interrompe a atualização normal do status por enquanto
+        
+        // Verifica se o selectedOrder e empresa_id existem antes de chamar
+        if (selectedOrder && selectedOrder.empresa_id) {
+          setOrderToAssignDeliverer(selectedOrder);
+          await fetchAvailableDeliverers(selectedOrder.empresa_id); // Passa o empresa_id do pedido
+          setIsDelivererSelectionModalOpen(true);
+          return; // Interrompe a atualização normal do status por enquanto
+        } else {
+          console.warn("handleUpdateOrderStatus: Pedido selecionado ou empresa_id não disponível para atribuição de entregador.");
+          toast({
+            title: "Aviso",
+            description: "Não foi possível atribuir entregador: ID da empresa não encontrado no pedido.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
       // --- Fim da lógica para seleção de entregador ---
 
@@ -502,7 +516,7 @@ const AdminOrders = () => {
                 <div className="text-sm text-gray-500">{order.customerPhone}</div>
                 {order.entregador_id && (
                   <div className="text-xs text-gray-600 mt-1">
-                    Entregador: {availableDeliverers.find(d => d.id === order.entregador_id)?.name || order.entregador_id}
+                    Entregador: {availableDeliverers.find(d => d.id === order.entregador_id)?.nome || order.entregador_id} {/* Alterado para 'nome' */}
                   </div>
                 )}
               </div>
@@ -593,7 +607,6 @@ const AdminOrders = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Atribuir Entregador</DialogTitle>
-            {/* CORREÇÃO AQUI: Removida a tag </DialogDescription> duplicada */}
             <DialogDescription>
               Selecione o entregador responsável por este pedido.
             </DialogDescription>
@@ -618,7 +631,7 @@ const AdminOrders = () => {
                   {availableDeliverers.length > 0 ? (
                     availableDeliverers.map((deliverer) => (
                       <SelectItem key={deliverer.id} value={deliverer.id}>
-                        {deliverer.name}
+                        {deliverer.nome} {/* Alterado para 'nome' */}
                       </SelectItem>
                     ))
                   ) : (
@@ -630,7 +643,7 @@ const AdminOrders = () => {
               </Select>
             )}
             {availableDeliverers.length === 0 && !loadingDeliverers && (
-              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'users' no Supabase para o 'empresa_id' atual.</p>
+              <p className="text-sm text-red-500 mt-2">Nenhum entregador ativo encontrado. Verifique a coleção 'usuarios' no Supabase para o 'empresa_id' do pedido.</p> {/* Mensagem atualizada */}
             )}
           </div>
           <DialogFooter>
