@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Order } from "@/types/order";
+import { Order } from "@/types/order"; // Certifique-se de que sua interface Order inclui 'address' como objeto
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -10,13 +10,42 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { updateOrder } from "@/services/orderService";
+import { useAuth } from "@/hooks/useAuth"; // Importa o hook de autenticação
 
 const Entregador = () => {
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth(); // Obtém o usuário logado do AuthContext
+
+  // Função para formatar o endereço estruturado
+  const formatAddress = (address: Order['address']) => {
+    if (!address) return "Endereço não disponível";
+    // Garante que as propriedades existem antes de acessá-las
+    const street = address.street || '';
+    const number = address.number || '';
+    const complement = address.complement || '';
+    const neighborhood = address.neighborhood || '';
+    const city = address.city || '';
+    const state = address.state || '';
+    const zipCode = address.zipCode || '';
+
+    let formattedAddress = `${street}, ${number}`;
+    if (complement) formattedAddress += `, ${complement}`;
+    formattedAddress += ` - ${neighborhood}, ${city} - ${state}`;
+    if (zipCode) formattedAddress += ` (${zipCode})`;
+    return formattedAddress;
+  };
 
   useEffect(() => {
+    // Apenas tenta buscar pedidos se houver um currentUser e ele tiver um ID
+    if (!currentUser || !currentUser.id) {
+      console.log("Entregador: Usuário não logado ou ID não disponível, não buscando pedidos.");
+      setLoading(false);
+      setOrders([]);
+      return;
+    }
+
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date();
@@ -29,24 +58,47 @@ const Entregador = () => {
     const ordersQuery = query(
       ordersRef,
       where("status", "==", "delivering"),
+      where("entregador_id", "==", currentUser.id), // Filtra pedidos pelo ID do entregador logado
       where("createdAt", ">=", startTimestamp),
       where("createdAt", "<=", endTimestamp),
-      orderBy("status"),
+      orderBy("status"), // Pode ser removido se todos forem 'delivering'
       orderBy("createdAt", "desc")
     );
 
+    console.log("Entregador: Configurando listener de pedidos para o entregador:", currentUser.id);
+
     const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
-      const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-      })) as Order[];
+      console.log("Entregador: Snapshot de pedidos recebido.");
+      const fetchedOrders: Order[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          // Garante que address seja um objeto ou null/undefined
+          address: data.address || null, 
+          // Garante que paymentStatus tenha um valor padrão se estiver faltando
+          paymentStatus: data.paymentStatus || "a_receber", 
+        } as Order;
+      });
       setOrders(fetchedOrders);
+      setLoading(false);
+      console.log("Entregador: Pedidos carregados:", fetchedOrders.length);
+    }, (error) => {
+      console.error("Entregador: Erro no listener de pedidos:", error);
+      toast({
+        title: "Erro de Carregamento",
+        description: "Não foi possível carregar seus pedidos de entrega. Tente novamente.",
+        variant: "destructive",
+      });
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      console.log("Entregador: Desinscrevendo do listener de pedidos.");
+      unsubscribe();
+    };
+  }, [currentUser]); // Adicionado currentUser como dependência para re-executar quando o usuário carregar
 
   const handleConfirmEntrega = async (order: Order) => {
     const novoStatus = order.paymentMethod === "cash" ? "received" : "delivered";
@@ -57,12 +109,13 @@ const Entregador = () => {
         title: "Status atualizado",
         description: `Pedido #${order.id.substring(0, 6)} marcado como ${translateStatus(novoStatus)}`,
       });
-      setOrders((prev) => prev.filter((o) => o.id !== order.id));
-    } catch (err) {
-      console.error(err);
+      // A remoção do pedido da lista será tratada pelo onSnapshot, que recarregará os pedidos
+      // setOrders((prev) => prev.filter((o) => o.id !== order.id)); // Removido para evitar inconsistência com onSnapshot
+    } catch (err: any) {
+      console.error("Entregador: Erro ao confirmar entrega:", err);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o status do pedido.",
+        description: `Não foi possível atualizar o status do pedido: ${err.message}`,
         variant: "destructive",
       });
     }
@@ -94,23 +147,19 @@ const Entregador = () => {
     }
   };
 
-  // --- FUNÇÃO AJUSTADA AQUI PARA TRATAR NULOS/INDEFINIDOS COMO "A RECEBER" ---
   const getPaymentStatusText = (status?: Order["paymentStatus"]) => {
     if (status === "recebido") {
       return "Recebido (Pagamento já efetuado)";
     }
-    // Se não for "recebido" ou se for undefined/null, consideramos "A Receber"
     return "A Receber (Pagamento no local)";
   };
 
-  // --- NOVA FUNÇÃO PARA RETORNAR A CLASSE DE COR ---
   const getPaymentStatusColorClass = (status?: Order["paymentStatus"]) => {
     if (status === "recebido") {
-      return "text-green-600 font-semibold"; // Verde e negrito para destacar
+      return "text-green-600 font-semibold";
     }
-    return "text-red-600 font-semibold"; // Vermelho e negrito para "A Receber"
+    return "text-red-600 font-semibold";
   };
-  // --- FIM DAS NOVAS FUNÇÕES ---
 
   const formatFullDate = (input: string | Date | Timestamp) => {
     let date: Date;
@@ -144,86 +193,108 @@ const Entregador = () => {
         <p className="text-gray-500">Nenhum pedido em rota de entrega.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {orders.map((order) => (
-            <Card key={order.id} className="overflow-hidden">
-              <CardHeader className="bg-gray-50 py-4">
-                <div>
-                  <p className="text-sm text-gray-500">Pedido #{order.id.substring(0, 6)} - {formatFullDate(order.createdAt)}</p>
-                  <p className="text-base font-medium text-gray-700">
-                    Cliente: {order.customerName}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Fone: <a href={`https://wa.me/55${order.customerPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      {order.customerPhone}
-                    </a>
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="py-4 space-y-2">
-                {/* Endereço completo do cliente */}
-                <div>
-                  <p className="font-semibold text-sm">Endereço de Entrega:</p>
-                  <p className="text-sm text-gray-700">{order.address || "Endereço não disponível"}</p>
-                </div>
+          {orders.map((order) => {
+            try {
+              return (
+                <Card key={order.id} className="overflow-hidden">
+                  <CardHeader className="bg-gray-50 py-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Pedido #{order.id.substring(0, 6)} - {formatFullDate(order.createdAt)}</p>
+                      <p className="text-base font-medium text-gray-700">
+                        Cliente: {order.customerName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Fone: <a href={`https://wa.me/55${order.customerPhone?.replace(/\D/g, '') || ''}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {order.customerPhone}
+                        </a>
+                      </p>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="py-4 space-y-2">
+                    {/* Endereço completo do cliente - AGORA FORMATADO */}
+                    <div>
+                      <p className="font-semibold text-sm">Endereço de Entrega:</p>
+                      <p className="text-sm text-gray-700">{formatAddress(order.address)}</p>
+                    </div>
 
-                {/* Pedido completo do cliente */}
-                <div>
-                  <p className="font-semibold text-sm">Itens do Pedido:</p>
-                  <ul className="list-disc list-inside text-sm text-gray-700">
-                    {order.items.map((item, index) => (
-                      <React.Fragment key={item.menuItemId + "-" + index}>
-                        <li>
-                          {item.quantity}x {item.name}
-                          {item.notes && <span className="text-gray-500 italic"> ({item.notes})</span>}
-                          {item.priceFrom && <span className="text-gray-500 italic"> (Preço a consultar)</span>}
-                        </li>
-                        {item.selectedVariations && item.selectedVariations.length > 0 && (
-                          <ul className="list-disc list-inside ml-4 text-sm text-gray-700">
-                            {item.selectedVariations.map((group, groupIdx) => (
-                              <React.Fragment key={group.groupId + "-" + groupIdx}>
-                                {group.variations.map((variation, varIdx) => (
-                                  <li key={variation.variationId + "-" + varIdx}>
-                                    {variation.quantity}x {variation.name}
-                                  </li>
+                    {/* Pedido completo do cliente */}
+                    <div>
+                      <p className="font-semibold text-sm">Itens do Pedido:</p>
+                      <ul className="list-disc list-inside text-sm text-gray-700">
+                        {order.items.map((item, index) => (
+                          <React.Fragment key={item.menuItemId + "-" + index}>
+                            <li>
+                              {item.quantity}x {item.name}
+                              {item.notes && <span className="text-gray-500 italic"> ({item.notes})</span>}
+                              {item.priceFrom && <span className="text-gray-500 italic"> (Preço a consultar)</span>}
+                            </li>
+                            {item.selectedVariations && item.selectedVariations.length > 0 && (
+                              <ul className="list-disc list-inside ml-4 text-sm text-gray-700">
+                                {item.selectedVariations.map((group, groupIdx) => (
+                                  <React.Fragment key={group.groupId + "-" + groupIdx}>
+                                    {group.variations.map((variation, varIdx) => (
+                                      <li key={variation.variationId + "-" + varIdx}>
+                                        {variation.quantity}x {variation.name}
+                                      </li>
+                                    ))}
+                                  </React.Fragment>
                                 ))}
-                              </React.Fragment>
-                            ))}
-                          </ul>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </ul>
-                </div>
+                              </ul>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </ul>
+                    </div>
 
-                {/* Forma de pagamento */}
-                <div>
-                  <p className="font-semibold text-sm">Forma de Pagamento:</p>
-                  <p className="text-sm text-gray-700">{translatePaymentMethod(order.paymentMethod)}</p>
-                </div>
+                    {/* Forma de pagamento */}
+                    <div>
+                      <p className="font-semibold text-sm">Forma de Pagamento:</p>
+                      <p className="text-sm text-gray-700">{translatePaymentMethod(order.paymentMethod)}</p>
+                    </div>
 
-                {/* Status de Pagamento - AGORA COM CORES E LÓGICA REVISADA */}
-                <div>
-                  <p className="font-semibold text-sm">Status de Pagamento:</p>
-                  <p className={`text-sm ${getPaymentStatusColorClass(order.paymentStatus)}`}>
-                    {getPaymentStatusText(order.paymentStatus)}
-                  </p>
-                </div>
+                    {/* Status de Pagamento - AGORA COM CORES E LÓGICA REVISADA */}
+                    <div>
+                      <p className="font-semibold text-sm">Status de Pagamento:</p>
+                      <p className={`text-sm ${getPaymentStatusColorClass(order.paymentStatus)}`}>
+                        {getPaymentStatusText(order.paymentStatus)}
+                      </p>
+                    </div>
 
-                {order.observations && (
-                  <div>
-                    <p className="font-semibold text-sm">Observações:</p>
-                    <p className="text-sm text-gray-700 italic">{order.observations}</p>
-                  </div>
-                )}
+                    {order.observations && (
+                      <div>
+                        <p className="font-semibold text-sm">Observações:</p>
+                        <p className="text-sm text-gray-700 italic">{order.observations}</p>
+                      </div>
+                    )}
 
-                <p className="font-medium text-lg text-right">Total: R$ {order.total.toFixed(2)}</p>
+                    <p className="font-medium text-lg text-right">Total: R$ {order.total.toFixed(2)}</p>
 
-                <Button onClick={() => handleConfirmEntrega(order)} className="w-full mt-4">
-                  Confirmar entrega
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                    <Button onClick={() => handleConfirmEntrega(order)} className="w-full mt-4">
+                      Confirmar entrega
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            } catch (renderError: any) {
+              console.error(`Entregador: Erro ao renderizar pedido ${order.id}:`, renderError);
+              console.error("Pedido que causou o erro:", order);
+              toast({
+                title: "Erro de Renderização",
+                description: `Não foi possível exibir o pedido ${order.id.substring(0,6)}. Verifique o console para mais detalhes.`,
+                variant: "destructive",
+              });
+              return (
+                <Card key={order.id} className="overflow-hidden bg-red-50 border border-red-200">
+                  <CardHeader>
+                    <CardTitle className="text-red-700">Erro ao Carregar Pedido #{order.id.substring(0,6)}</CardTitle>
+                    <CardDescription className="text-red-600">
+                      Ocorreu um erro ao exibir os detalhes deste pedido. Consulte o console para mais informações.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              );
+            }
+          })}
         </div>
       )}
     </div>
@@ -231,4 +302,3 @@ const Entregador = () => {
 };
 
 export default Entregador;
-              
