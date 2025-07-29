@@ -84,7 +84,7 @@ const AdminOrders = () => {
     return formattedAddress;
   };
 
-  // Função para carregar os pedidos (ainda usa Firestore)
+  // Função para carregar os pedidos (agora com lógica para "A descontar")
   const loadOrders = async (status: string, dateRange: DateRange | undefined) => {
     console.log("loadOrders: Iniciando carregamento de pedidos (Firestore)...");
     try {
@@ -101,8 +101,18 @@ const AdminOrders = () => {
       const startDate = dateRange.from;
       const endDate = dateRange.to || dateRange.from;
 
-      console.log(`loadOrders: Buscando pedidos de ${startDate.toLocaleDateString()} a ${endDate.toLocaleDateString()} com status '${status}'`);
-      const orders = await getOrdersByDateRange(startDate, endDate, status === "all" ? undefined : status);
+      let orders: Order[] = [];
+
+      if (status === "to_deduct") {
+        console.log(`loadOrders: Buscando pedidos 'A descontar' (Desconto em Folha, A Receber) de ${startDate.toLocaleDateString()} a ${endDate.toLocaleDateString()}`);
+        // Chama getOrdersByDateRange com filtros específicos para paymentMethod e paymentStatus
+        orders = await getOrdersByDateRange(startDate, endDate, undefined, "payroll_discount", "a_receber");
+      } else {
+        console.log(`loadOrders: Buscando pedidos de ${startDate.toLocaleDateString()} a ${endDate.toLocaleDateString()} com status '${status}'`);
+        // Chama getOrdersByDateRange com o status normal
+        orders = await getOrdersByDateRange(startDate, endDate, status === "all" ? undefined : status);
+      }
+      
       setOrders(orders);
       console.log(`loadOrders: ${orders.length} pedidos carregados.`);
       setLoading(false);
@@ -200,6 +210,9 @@ const AdminOrders = () => {
       const endTimestamp = Timestamp.fromDate(end);
 
       const ordersRef = collection(db, "orders");
+      
+      // A query do onSnapshot deve ser mais genérica ou refletir o filtro atual
+      // Para manter a detecção de "novos pedidos pendentes", vamos manter a query ampla aqui
       const ordersQuery = query(
         ordersRef,
         where("createdAt", ">=", startTimestamp),
@@ -211,10 +224,8 @@ const AdminOrders = () => {
         ordersQuery,
         (snapshot) => {
           console.log("onSnapshot: Mudança detectada nos pedidos.");
-          if (!snapshot.empty) {
-            console.log("onSnapshot: Snapshot não vazio, recarregando pedidos.");
-            loadOrders(activeStatus, dateRange);
-          }
+          // Se houver mudanças, recarrega os pedidos com os filtros atuais
+          loadOrders(activeStatus, dateRange); 
 
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
@@ -247,7 +258,7 @@ const AdminOrders = () => {
         unsubscribe();
       };
     }
-  }, [activeStatus, dateRange, toast]);
+  }, [activeStatus, dateRange, toast]); // activeStatus adicionado como dependência
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     console.log("handleDateRangeChange: Nova faixa de data selecionada:", range);
@@ -415,7 +426,7 @@ const AdminOrders = () => {
       received: "Recebido",
       delivered: "Entrega finalizada",
       cancelled: "Cancelado",
-      to_deduct: "A descontar",
+      to_deduct: "A descontar", // Este é um status de filtro, não um status de pedido real
       paid: "Pago"
     };
     return statusMap[status] || status;
@@ -470,7 +481,7 @@ const AdminOrders = () => {
     { value: "received", label: "Recebidos" },
     { value: "delivered", label: "Finalizados" },
     { value: "cancelled", label: "Cancelados" },
-    { value: "to_deduct", label: "A descontar" },
+    { value: "to_deduct", label: "A descontar" }, // Esta opção agora terá um tratamento especial
     { value: "paid", label: "Pagos" }
   ];
 
