@@ -1,6 +1,6 @@
 // src/services/orderService.ts
 
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, where, orderBy, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, where, orderBy, serverTimestamp, Timestamp, Query } from "firebase/firestore"; // Adicionado 'Query'
 import { db } from "@/lib/firebase";
 import { Order, CreateOrderRequest, UpdateOrderRequest } from "@/types/order";
 import { getAllVariations } from "@/services/variationService";
@@ -247,7 +247,9 @@ export const getTodayOrders = async (status?: string): Promise<Order[]> => {
 export const getOrdersByDateRange = async (
   startDate: Date,
   endDate: Date,
-  status?: string
+  status?: Order["status"], // Use o tipo Order["status"] para garantir consistência
+  paymentMethod?: Order["paymentMethod"], // Novo parâmetro
+  paymentStatus?: Order["paymentStatus"] // Novo parâmetro
 ): Promise<Order[]> => {
   try {
     const start = new Date(startDate);
@@ -261,10 +263,12 @@ export const getOrdersByDateRange = async (
     
     console.log("Buscando pedidos no intervalo:", start.toISOString(), "até", end.toISOString());
     console.log("Status filtro:", status);
+    console.log("Método de Pagamento filtro:", paymentMethod); // Log do novo filtro
+    console.log("Status de Pagamento filtro:", paymentStatus); // Log do novo filtro
     
     const ordersCollectionRef = collection(db, ORDERS_COLLECTION); 
     
-    let q = query(
+    let q: Query = query( // Tipagem adicionada para 'q'
       ordersCollectionRef,
       where("createdAt", ">=", startTimestamp),
       where("createdAt", "<=", endTimestamp),
@@ -274,6 +278,15 @@ export const getOrdersByDateRange = async (
     if (status && status !== "all") {
       q = query(q, where("status", "==", status)); 
     }
+
+    // --- NOVOS FILTROS ---
+    if (paymentMethod) {
+      q = query(q, where("paymentMethod", "==", paymentMethod));
+    }
+    if (paymentStatus) {
+      q = query(q, where("paymentStatus", "==", paymentStatus));
+    }
+    // --- FIM DOS NOVOS FILTROS ---
     
     console.log("Executando consulta ao Firestore...");
     
