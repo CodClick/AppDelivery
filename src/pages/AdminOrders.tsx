@@ -238,6 +238,7 @@ const AdminOrders = () => {
 
   const handleViewOrder = (order: Order) => {
     console.log("handleViewOrder: Visualizando detalhes do pedido:", order.id);
+    console.log("handleViewOrder: Objeto selectedOrder sendo passado:", JSON.stringify(order, null, 2)); // NOVO LOG AQUI!
     setSelectedOrder(order);
     setDialogOpen(true);
   };
