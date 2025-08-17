@@ -32,7 +32,7 @@ const Admin = () => {
   // TODO: Obter o empresa_id do currentUser quando a autenticação for adaptada para Supabase
   // Por enquanto, usaremos um placeholder ou o ID fixo para testes.
   // Uma vez que o Supabase auth for integrado, currentUser.empresa_id estará disponível.
-  const empresaId = currentUser?.empresaId; // ou o ID fixo de teste: "67ac5adf-02a7-4c22-8ec3-68c463323e35";
+  const empresaId = currentUser?.empresaId ?? "d2111847-f0ed-467d-a0b4-4ca31feaa7b4";
 
   useEffect(() => {
     // Apenas redirecione se não houver currentUser E não estivermos em modo de desenvolvimento/seed
