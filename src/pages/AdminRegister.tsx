@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { signUpAdmin } from "@/services/authService";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminRegister() {
@@ -30,7 +29,7 @@ export default function AdminRegister() {
     e.preventDefault();
     setLoading(true);
 
-    // Validar token antes de prosseguir
+    // Passo 1: Validar o token
     const { data: tokenData, error: tokenError } = await supabase
       .from("admin_tokens")
       .select("*")
@@ -49,14 +48,77 @@ export default function AdminRegister() {
     }
 
     try {
-      await signUpAdmin(form);
+      // Passo 2: Cadastrar o novo usuário admin com email e senha
+      const { data: userData, error: userError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: {
+            role: "admin",
+            name: form.nome,
+          },
+        },
+      });
 
-      // Marcar token como usado
-      await supabase
+      if (userError) {
+        throw userError;
+      }
+      
+      const newUserId = userData?.user?.id;
+      if (!newUserId) {
+          throw new Error("ID do usuário não foi retornado após o cadastro.");
+      }
+
+      // Passo 3: Criar um registro na tabela 'usuarios' com o ID do usuário e o role
+      const { error: profileError } = await supabase
+        .from("usuarios")
+        .insert({
+          id: newUserId,
+          role: "admin",
+          name: form.nome,
+          email: form.email,
+        });
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      // Passo 4: Cadastrar a empresa, associando o admin_id com o newUserId
+      const { error: empresaError } = await supabase
+        .from("empresas")
+        .insert({
+          nome: form.empresa_nome,
+          admin_id: newUserId, // AQUI está a correção!
+          telefone: form.empresa_telefone,
+        });
+
+      if (empresaError) {
+        // Se a inserção da empresa falhar, é crucial tentar remover o usuário recém-criado
+        // para evitar que ele fique 'órfão' e possa ser usado.
+        // **IMPORTANTE**: A deleção de usuários só pode ser feita com a role `service_role`.
+        // A sua API do Supabase deve estar configurada para isso.
+        // Por exemplo: await supabase.auth.admin.deleteUser(newUserId);
+        // Ou, para o fluxo do usuário logado, você pode simplesmente deslogá-lo
+        await supabase.auth.signOut(); 
+        throw empresaError;
+      }
+
+      // Passo 5: Marcar o token como usado somente após todas as inserções
+      const { error: updateTokenError } = await supabase
         .from("admin_tokens")
         .update({ used: true })
         .eq("id", tokenData.id);
 
+      if (updateTokenError) {
+        throw updateTokenError;
+      }
+
+      // Se tudo ocorrer bem, redireciona para o painel de administração
+      toast({
+        title: "Sucesso!",
+        description: "Restaurante cadastrado com sucesso.",
+        variant: "default",
+      });
       navigate("/admin-dashboard");
     } catch (error: any) {
       toast({
@@ -64,6 +126,7 @@ export default function AdminRegister() {
         description: error.message,
         variant: "destructive",
       });
+      console.error("Erro no fluxo de cadastro:", error);
     } finally {
       setLoading(false);
     }
@@ -78,7 +141,7 @@ export default function AdminRegister() {
         <h2 className="text-2xl font-bold text-center text-brand">
           Cadastro do Restaurante
         </h2>
-
+        {/* ... (o resto do formulário é o mesmo) ... */}
         <div>
           <Label htmlFor="email">E-mail</Label>
           <Input
@@ -89,7 +152,6 @@ export default function AdminRegister() {
             required
           />
         </div>
-
         <div>
           <Label htmlFor="password">Senha</Label>
           <Input
@@ -100,7 +162,6 @@ export default function AdminRegister() {
             required
           />
         </div>
-
         <div>
           <Label htmlFor="nome">Seu nome</Label>
           <Input
@@ -111,7 +172,6 @@ export default function AdminRegister() {
             required
           />
         </div>
-
         <div>
           <Label htmlFor="empresa_nome">Nome da empresa</Label>
           <Input
@@ -122,7 +182,6 @@ export default function AdminRegister() {
             required
           />
         </div>
-
         <div>
           <Label htmlFor="empresa_telefone">Telefone da empresa</Label>
           <Input
@@ -133,7 +192,6 @@ export default function AdminRegister() {
             required
           />
         </div>
-
         <div>
           <Label htmlFor="token">Token de Acesso</Label>
           <Input
@@ -144,7 +202,6 @@ export default function AdminRegister() {
             required
           />
         </div>
-
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Cadastrando..." : "Criar conta"}
         </Button>
