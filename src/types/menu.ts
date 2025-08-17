@@ -1,54 +1,49 @@
-export interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  category: string;
-  popular?: boolean;
-  hasVariations?: boolean;
-  variationGroups?: VariationGroup[]; // Now accepts only VariationGroup objects
-  priceFrom?: boolean; // New property to indicate "a partir de" pricing
-}
+// src/types/menu.ts
 
-export interface CartItem extends MenuItem {
-  quantity: number;
-  selectedVariations?: SelectedVariationGroup[];
-}
-
-export interface SelectedVariationGroup {
-  groupId: string;
-  groupName: string;
-  variations: SelectedVariation[];
-}
-
-export interface SelectedVariation {
-  variationId: string;
-  quantity: number;
-  name?: string; // Added for displaying in cart
-  additionalPrice?: number; // Added for price calculation
-}
+// Usamos snake_case para os campos que vêm do Supabase/PostgreSQL
+// E podemos mapear para camelCase no frontend, se preferir
+// Ou podemos usar camelCase direto se o Supabase for configurado com camel_case_columns
+// Por simplicidade, vou manter a conversão aqui para o que você já usa (camelCase)
 
 export interface Category {
-  id: string;
+  id: string; // UUID do Supabase
   name: string;
-  order?: number;
+  display_order: string; // Confirmado como string
+  empresa_id: string; // UUID da empresa
+  created_at: string; // Timestamp
 }
 
 export interface Variation {
-  id: string;
+  id: string; // UUID do Supabase
   name: string;
-  description?: string;
-  additionalPrice?: number;
-  available: boolean;
-  categoryIds: string[]; // Categories where this variation can be used
+  price_adjustment: number; // NUMERIC(10,2) no DB, number no TS
+  empresa_id: string; // UUID da empresa
+  created_at: string; // Timestamp
 }
 
 export interface VariationGroup {
-  id: string;
+  id: string; // UUID do Supabase
   name: string;
-  minRequired: number;
-  maxAllowed: number;
-  variations: string[]; // Array of variation IDs
-  customMessage?: string; // Custom message for this variation group
+  min_selections: number;
+  max_selections: number;
+  empresa_id: string; // UUID da empresa
+  created_at: string; // Timestamp
+  // Propriedade para armazenar as variações associadas ao grupo
+  variations?: Variation[]; // Carregado via JOIN
+}
+
+export interface MenuItem {
+  id: string; // UUID do Supabase
+  name: string;
+  description?: string; // Não obrigatório
+  price: number; // NUMERIC(10,2) no DB, number no TS
+  image_url?: string;
+  category_id: string; // UUID da categoria
+  is_base_price_included: boolean;
+  is_available: boolean;
+  empresa_id: string; // UUID da empresa
+  created_at: string; // Timestamp
+  // Propriedades carregadas via JOIN para facilitar o uso no frontend
+  category?: Category; // A categoria associada
+  variation_groups?: VariationGroup[]; // Grupos de variação associados ao item
 }
