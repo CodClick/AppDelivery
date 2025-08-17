@@ -6,6 +6,22 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 
+/**
+ * Função para gerar um 'slug' a partir de uma string.
+ * Um slug é uma versão amigável para URLs de uma string.
+ * Exemplo: "Nome da Empresa" -> "nome-da-empresa"
+ */
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .normalize('NFD') // Normaliza para decompor acentos
+    .replace(/[\u0300-\u036f]/g, '') // Remove caracteres diacríticos (acentos)
+    .toLowerCase() // Converte para minúsculas
+    .trim() // Remove espaços no início e no fim
+    .replace(/\s+/g, '-') // Substitui espaços por hífens
+    .replace(/[^\w-]+/g, ''); // Remove todos os caracteres não alfanuméricos exceto hífens
+};
+
 export default function AdminRegister() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -84,22 +100,21 @@ export default function AdminRegister() {
       }
 
       // Passo 4: Cadastrar a empresa, associando o admin_id com o newUserId
+      // E agora gerando o slug
+      const empresaSlug = slugify(form.empresa_nome);
       const { error: empresaError } = await supabase
         .from("empresas")
         .insert({
           nome: form.empresa_nome,
-          admin_id: newUserId, // AQUI está a correção!
+          admin_id: newUserId,
           telefone: form.empresa_telefone,
+          slug: empresaSlug, // AQUI está a correção!
         });
 
       if (empresaError) {
         // Se a inserção da empresa falhar, é crucial tentar remover o usuário recém-criado
         // para evitar que ele fique 'órfão' e possa ser usado.
-        // **IMPORTANTE**: A deleção de usuários só pode ser feita com a role `service_role`.
-        // A sua API do Supabase deve estar configurada para isso.
-        // Por exemplo: await supabase.auth.admin.deleteUser(newUserId);
-        // Ou, para o fluxo do usuário logado, você pode simplesmente deslogá-lo
-        await supabase.auth.signOut(); 
+        await supabase.auth.signOut();
         throw empresaError;
       }
 
@@ -141,7 +156,6 @@ export default function AdminRegister() {
         <h2 className="text-2xl font-bold text-center text-brand">
           Cadastro do Restaurante
         </h2>
-        {/* ... (o resto do formulário é o mesmo) ... */}
         <div>
           <Label htmlFor="email">E-mail</Label>
           <Input
