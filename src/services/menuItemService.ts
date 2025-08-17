@@ -1,7 +1,7 @@
 // src/services/menuItemService.ts
 
 import { supabase } from "@/lib/supabaseClient";
-import { MenuItem, Category, Variation, VariationGroup } from "@/types/menu";
+import { MenuItem, Variation, VariationGroup } from "@/types/menu";
 
 /**
  * Obtém todos os itens do menu para uma empresa específica.
@@ -11,7 +11,6 @@ import { MenuItem, Category, Variation, VariationGroup } from "@/types/menu";
 export const getAllMenuItems = async (empresaId: string): Promise<MenuItem[]> => {
   console.log("Buscando todos os itens do menu para o empresaId:", empresaId);
 
-  // Se o empresaId não for válido, não fazemos a busca.
   if (!empresaId) {
     console.error("empresaId não fornecido. Abortando a busca de itens do menu.");
     return [];
@@ -51,22 +50,19 @@ export const getAllMenuItems = async (empresaId: string): Promise<MenuItem[]> =>
       `
     )
     .eq('empresa_id', empresaId)
-    .order('created_at', { ascending: true }); // Ordena os itens por data de criação
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.error("Erro ao buscar itens do menu:", error.message);
     throw new Error("Não foi possível carregar os itens do menu.");
   }
 
-  // Mapeia a estrutura do Supabase para a estrutura 'MenuItem' do seu app.
   const mappedItems: MenuItem[] = menuItemsData.map((item: any) => {
-    // Mapeia os grupos de variação.
     const variationGroups: VariationGroup[] = (item.item_variation_groups || [])
       .map((ivg: any) => {
         const group = ivg.variation_group;
         if (!group) return null;
 
-        // Mapeia as variações dentro do grupo.
         const variations: Variation[] = (group.group_variations || [])
           .map((gv: any) => gv.variation)
           .filter(v => v);
@@ -77,20 +73,18 @@ export const getAllMenuItems = async (empresaId: string): Promise<MenuItem[]> =>
           minRequired: group.min_selections,
           maxAllowed: group.max_selections,
           variations: variations.map((v: any) => v.id),
-          customMessage: "", // O Supabase não tem essa coluna, então usamos uma string vazia por enquanto.
+          customMessage: "",
           variationsData: variations.map((v: any) => ({
             id: v.id,
             name: v.name,
             price_adjustment: v.price_adjustment,
             available: v.is_available,
-            categoryIds: [], // Este campo não está no Supabase, então deixamos como array vazio.
+            categoryIds: [],
           })),
         };
       })
-      .filter(group => group); // Filtra os grupos nulos.
+      .filter(group => group);
 
-    // Mapeia o item do menu.
-    const categoryName = item.category?.name;
     const categoryId = item.category?.id;
 
     return {
@@ -109,5 +103,65 @@ export const getAllMenuItems = async (empresaId: string): Promise<MenuItem[]> =>
   return mappedItems;
 };
 
-// As outras funções (getAllCategories, getAllVariations, etc.) precisarão ser adaptadas
-// de forma similar para usar o Supabase.
+
+/**
+ * Salva (insere ou atualiza) um item do menu no Supabase.
+ * @param item O objeto MenuItem a ser salvo.
+ * @param empresaId O UUID da empresa à qual o item pertence.
+ * @returns O item do menu salvo com os dados atualizados do banco.
+ */
+export const saveMenuItem = async (item: MenuItem, empresaId: string): Promise<MenuItem> => {
+    // Objeto que será inserido/atualizado no banco de dados.
+    const itemToSave = {
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        image_url: item.image,
+        category_id: item.category,
+        is_popular: item.popular,
+        is_available: true, 
+        is_base_price_included: !item.hasVariations,
+        empresa_id: empresaId,
+    };
+
+    let data;
+    let error;
+
+    if (item.id) {
+        // Se o item já tem um ID, fazemos um UPDATE
+        const result = await supabase
+            .from('menu_items')
+            .update(itemToSave)
+            .eq('id', item.id)
+            .eq('empresa_id', empresaId)
+            .select();
+        data = result.data;
+        error = result.error;
+    } else {
+        // Se não tem ID, é um novo item, fazemos um INSERT
+        const result = await supabase
+            .from('menu_items')
+            .insert(itemToSave)
+            .select();
+        data = result.data;
+        error = result.error;
+    }
+
+    if (error) {
+        console.error("Erro ao salvar o item do menu:", error);
+        throw new Error("Não foi possível salvar o item do menu. Por favor, tente novamente.");
+    }
+
+    const savedItem = data ? data[0] : null;
+
+    if (!savedItem) {
+        throw new Error("O item foi salvo, mas não foi retornado corretamente.");
+    }
+
+    const mappedItem: MenuItem = {
+        ...item,
+        id: savedItem.id,
+    };
+
+    return mappedItem;
+};
