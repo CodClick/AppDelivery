@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { CartItem, MenuItem, SelectedVariationGroup } from "@/types/menu";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast"; // CORREÇÃO: Importe o hook useToast
 import { getAllVariations } from "@/services/variationService";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +41,9 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // --- Componente CartProvider ---
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Use o hook dentro do componente para ter acesso à função `toast`
+  const { toast } = useToast();
+
   // --- Estados do Carrinho ---
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
