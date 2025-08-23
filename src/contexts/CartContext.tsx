@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { CartItem, MenuItem, SelectedVariationGroup } from "@/types/menu";
-import { toast } from "@/components/ui/use-toast"; // Assumindo que você usa o use-toast do shadcn/ui
+import { toast } from "@/components/ui/use-toast";
 import { getAllVariations } from "@/services/variationService";
 import { supabase } from "@/lib/supabaseClient";
-import { useAuth } from "@/hooks/useAuth"; // Importe o useAuth
+import { useAuth } from "@/hooks/useAuth";
 
 // --- Interface para o Cupom ---
 interface Coupon {
@@ -26,15 +26,15 @@ interface CartContextType {
   increaseQuantity: (id: string) => void;
   decreaseQuantity: (id: string) => void;
   clearCart: () => void;
-  cartTotal: number; // Total bruto do carrinho (antes do cupom)
+  cartTotal: number;
   itemCount: number;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   applyCoupon: (couponCode: string) => Promise<void>;
   appliedCoupon: Coupon | null;
   removeCoupon: () => void;
-  discountAmount: number; // O valor monetário do desconto aplicado
-  finalTotal: number; // O total final após o desconto
+  discountAmount: number;
+  finalTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -44,7 +44,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // --- Estados do Carrinho ---
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartTotal, setCartTotal] = useState(0); // Este será o total ANTES do desconto
+  const [cartTotal, setCartTotal] = useState(0);
   const [itemCount, setItemCount] = useState(0);
   const [variations, setVariations] = useState<any[]>([]);
 
@@ -54,7 +54,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [finalTotal, setFinalTotal] = useState<number>(0);
 
   // --- Estado e Hook para o usuário logado e empresa_id ---
-  const { currentUser } = useAuth(); // Obtém o usuário logado do AuthContext
+  const { currentUser } = useAuth();
   const [userEmpresaId, setUserEmpresaId] = useState<string | null>(null);
 
   // --- useEffect 1: Busca o empresa_id do usuário logado ---
@@ -95,7 +95,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
     fetchUserEmpresaId();
-  }, [currentUser]); // Dependência: só roda quando currentUser muda
+  }, [currentUser]);
 
   // --- useEffect 2: Carrega todas as variações (para cálculo de preço) ---
   useEffect(() => {
@@ -110,7 +110,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
     loadVariations();
-  }, []); // Dependência: roda apenas uma vez na montagem do componente
+  }, []);
 
   // --- Funções Auxiliares de Cálculo (podem ser definidas aqui) ---
   const getVariationPrice = (variationId: string): number => {
@@ -158,7 +158,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     setCartTotal(total);
     setItemCount(count);
-  }, [cartItems, variations]); // Dependências: cartItems ou variations mudam
+  }, [cartItems, variations]);
 
   // --- useEffect 4: Recalcula finalTotal quando cartTotal ou discountAmount mudam ---
   useEffect(() => {
@@ -281,8 +281,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDiscountAmount(0);
   };
 
-  // --- Função para Aplicar Cupom ---
+  // --- Função para Aplicar Cupom (CORRIGIDA) ---
   const applyCoupon = useCallback(async (couponCode: string) => {
+    console.log("DEBUG: applyCoupon acionado.");
+    console.log("DEBUG: Código do cupom recebido:", couponCode);
+    console.log("DEBUG: empresa_id do usuário:", userEmpresaId);
+
     if (!currentUser) {
       toast({
         title: "Erro ao aplicar cupom",
@@ -301,15 +305,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
+    // Remova espaços em branco do código e converta para maiúsculas
+    const cleanedCouponCode = couponCode.trim().toUpperCase();
+    console.log("DEBUG: Código do cupom limpo e em maiúsculas:", cleanedCouponCode);
+
     const { data, error } = await supabase
       .from('cupons')
       .select('*')
-      .eq('nome', couponCode.toUpperCase())
+      .eq('nome', cleanedCouponCode) // Use a variável limpa
       .eq('ativo', true)
       .eq('empresa_id', userEmpresaId)
       .single();
 
     if (error || !data) {
+      console.error("DEBUG: ERRO Supabase ao buscar cupom:", error);
       toast({
         title: "Cupom inválido",
         description: "O código do cupom está incorreto ou o cupom não existe/não está ativo para sua empresa.",
