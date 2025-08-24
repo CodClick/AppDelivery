@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { MenuItem, Category, Variation, VariationGroup } from "../types/menu";
-import { Button } from "../components/ui/button";
-import { useToast } from "../hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { MenuItemsTab } from "../components/admin/MenuItemsTab";
-import { CategoriesTab } from "../components/admin/CategoriesTab";
-import { VariationsTab } from "../components/admin/VariationsTab";
-import { VariationGroupsTab } from "../components/admin/VariationGroupsTab";
+import { useAuth } from "@/hooks/useAuth";
+import { MenuItem, Category, Variation, VariationGroup } from "@/types/menu";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MenuItemsTab } from "@/components/admin/MenuItemsTab";
+import { CategoriesTab } from "@/components/admin/CategoriesTab";
+import { VariationsTab } from "@/components/admin/VariationsTab";
+import { VariationGroupsTab } from "@/components/admin/VariationGroupsTab";
 import { Database } from "lucide-react";
-import { SeedDataButton } from "../components/admin/SeedDataButton"; 
-import { supabase } from '../lib/supabaseClient';
+import { SeedDataButton } from "@/components/admin/SeedDataButton"; 
+import { supabase } from '@/lib/supabaseClient';
 
 const Admin = () => {
   const { currentUser } = useAuth();
@@ -61,40 +61,41 @@ const Admin = () => {
       }
       setCategories(categoriesData);
 
-      // Busca todos os itens do menu com seus grupos de variação e variações aninhadas
+      // Busca todos os itens do menu
       const { data: itemsData, error: itemsError } = await supabase
         .from('menu_items')
         .select(`
           *,
-          variation_groups (
-            *,
-            variations (*)
-          )
+          variation_groups (*)
         `)
         .eq('empresa_id', empresaId);
 
       if (itemsError) {
         throw itemsError;
       }
-
-      // Separa os dados de items, variações e grupos de variação para os estados separados
-      const allVariations = [];
-      const allVariationGroups = [];
-      
-      itemsData.forEach(item => {
-        if (item.variation_groups) {
-          item.variation_groups.forEach(group => {
-            allVariationGroups.push(group);
-            if (group.variations) {
-              allVariations.push(...group.variations);
-            }
-          });
-        }
-      });
-
       setMenuItems(itemsData);
-      setVariations(allVariations);
-      setVariationGroups(allVariationGroups);
+
+      // Busca todos os grupos de variação com suas variações aninhadas
+      const { data: variationGroupsData, error: variationGroupsError } = await supabase
+        .from('variation_groups')
+        .select('*, variations(*)')
+        .eq('empresa_id', empresaId);
+
+      if (variationGroupsError) {
+        throw variationGroupsError;
+      }
+      setVariationGroups(variationGroupsData);
+
+      // Busca todas as variações separadamente para a aba de variações
+      const { data: variationsData, error: variationsError } = await supabase
+        .from('variations')
+        .select('*')
+        .eq('empresa_id', empresaId);
+        
+      if (variationsError) {
+        throw variationsError;
+      }
+      setVariations(variationsData);
 
       toast({
         title: "Sucesso",
