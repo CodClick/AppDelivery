@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { useToast } from '../hooks/use-toast';
+import { cn } from '../../lib/utils';
+import { useToast } from '../../hooks/use-toast'; // Caminho corrigido
 
 interface MultiSelectProps {
   children: React.ReactNode;
