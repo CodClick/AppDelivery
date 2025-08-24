@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Button } from "../ui/button";
-import { useToast } from "../hooks/use-toast";
-import { supabase } from '../lib/supabaseClient';
+import { Button } from "../../ui/button";
+import { useToast } from "../../../hooks/use-toast"; // Caminho corrigido
+import { supabase } from '../../lib/supabaseClient';
 import { Database } from "lucide-react";
-import initialData from '../data/initialData';
+import initialData from '../../data/initialData';
 
 interface SeedDataButtonProps {
     onDataChange: () => void;
