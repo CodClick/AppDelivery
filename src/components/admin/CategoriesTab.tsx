@@ -6,8 +6,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
-import { Button } from "../ui/button";
+} from "../../ui/table";
+import { Button } from "../../ui/button";
 import { Edit, Trash, PlusCircle } from "lucide-react";
 import {
   Dialog,
@@ -15,12 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import { useToast } from "../hooks/use-toast";
-import { Category } from "../types/menu";
-import { supabase } from '../lib/supabaseClient';
+} from "../../ui/dialog";
+import { Label } from "../../ui/label";
+import { Input } from "../../ui/input";
+import { useToast } from "../../../hooks/use-toast"; // Caminho corrigido
+import { Category } from "../../types/menu";
+import { supabase } from '../../lib/supabaseClient';
 
 interface CategoriesTabProps {
   categories: Category[];
