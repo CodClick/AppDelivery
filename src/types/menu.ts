@@ -1,49 +1,13 @@
-// src/types/menu.ts
+import { Database } from './database.types';
 
-// Usamos snake_case para os campos que vêm do Supabase/PostgreSQL
-// E podemos mapear para camelCase no frontend, se preferir
-// Ou podemos usar camelCase direto se o Supabase for configurado com camel_case_columns
-// Por simplicidade, vou manter a conversão aqui para o que você já usa (camelCase)
+export type MenuItem = Database['public']['Tables']['menu_items']['Row'] & {
+  variation_groups?: VariationGroup[];
+};
 
-export interface Category {
-  id: string; // UUID do Supabase
-  name: string;
-  display_order: string; // Confirmado como string
-  empresa_id: string; // UUID da empresa
-  created_at: string; // Timestamp
-}
+export type Category = Database['public']['Tables']['categories']['Row'];
 
-export interface Variation {
-  id: string; // UUID do Supabase
-  name: string;
-  price_adjustment: number; // NUMERIC(10,2) no DB, number no TS
-  empresa_id: string; // UUID da empresa
-  created_at: string; // Timestamp
-}
+export type Variation = Database['public']['Tables']['variations']['Row'];
 
-export interface VariationGroup {
-  id: string; // UUID do Supabase
-  name: string;
-  min_selections: number;
-  max_selections: number;
-  empresa_id: string; // UUID da empresa
-  created_at: string; // Timestamp
-  // Propriedade para armazenar as variações associadas ao grupo
-  variations?: Variation[]; // Carregado via JOIN
-}
-
-export interface MenuItem {
-  id: string; // UUID do Supabase
-  name: string;
-  description?: string; // Não obrigatório
-  price: number; // NUMERIC(10,2) no DB, number no TS
-  image_url?: string;
-  category_id: string; // UUID da categoria
-  is_base_price_included: boolean;
-  is_available: boolean;
-  empresa_id: string; // UUID da empresa
-  created_at: string; // Timestamp
-  // Propriedades carregadas via JOIN para facilitar o uso no frontend
-  category?: Category; // A categoria associada
-  variation_groups?: VariationGroup[]; // Grupos de variação associados ao item
-}
+export type VariationGroup = Database['public']['Tables']['variation_groups']['Row'] & {
+  variations?: Variation[];
+};
