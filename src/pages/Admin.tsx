@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
-import { MenuItem, Category, Variation, VariationGroup } from "../../types/menu";
-import { Button } from "../../components/ui/button";
-import { useToast } from "../../hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { MenuItemsTab } from "./components/admin/MenuItemsTab";
-import { CategoriesTab } from "./components/admin/CategoriesTab";
-import { VariationsTab } from "./components/admin/VariationsTab";
-import { VariationGroupsTab } from "./components/admin/VariationGroupsTab";
+import { useAuth } from "../hooks/useAuth";
+import { MenuItem, Category, Variation, VariationGroup } from "../types/menu";
+import { Button } from "../components/ui/button";
+import { useToast } from "../hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { MenuItemsTab } from "../components/admin/MenuItemsTab";
+import { CategoriesTab } from "../components/admin/CategoriesTab";
+import { VariationsTab } from "../components/admin/VariationsTab";
+import { VariationGroupsTab } from "../components/admin/VariationGroupsTab";
 import { Database } from "lucide-react";
-import { SeedDataButton } from "./components/admin/SeedDataButton"; 
-import { supabase } from '../../lib/supabaseClient';
+import { SeedDataButton } from "../components/admin/SeedDataButton"; 
+import { supabase } from '../lib/supabaseClient';
 
 const Admin = () => {
   const { currentUser } = useAuth();
