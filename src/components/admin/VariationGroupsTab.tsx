@@ -6,8 +6,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
-import { Button } from "../ui/button";
+} from "../../ui/table";
+import { Button } from "../../ui/button";
 import { Edit, Trash, PlusCircle, Link, Unlink } from "lucide-react";
 import {
   Dialog,
@@ -15,17 +15,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import { useToast } from "../hooks/use-toast";
-import { Variation, VariationGroup } from "../types/menu";
-import { supabase } from '../lib/supabaseClient';
+} from "../../ui/dialog";
+import { Label } from "../../ui/label";
+import { Input } from "../../ui/input";
+import { useToast } from "../../../hooks/use-toast"; // Caminho corrigido
+import { Variation, VariationGroup } from "../../types/menu";
+import { supabase } from '../../lib/supabaseClient';
 import {
   MultiSelect,
   MultiSelectItem,
   MultiSelectLabel,
-} from "../ui/multi-select";
+} from "../../ui/multi-select";
 
 interface VariationGroupsTabProps {
   variationGroups: VariationGroup[];
