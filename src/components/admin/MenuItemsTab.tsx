@@ -6,8 +6,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
-import { Button } from "../ui/button";
+} from "../../ui/table";
+import { Button } from "../../ui/button";
 import { Edit, Trash, PlusCircle } from "lucide-react";
 import {
   Dialog,
@@ -15,20 +15,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
+} from "../../ui/dialog";
+import { Label } from "../../ui/label";
+import { Input } from "../../ui/input";
+import { Textarea } from "../../ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
-import { useToast } from "../hooks/use-toast";
-import { MenuItem, Category, Variation, VariationGroup } from "../types/menu";
-import { supabase } from '../lib/supabaseClient';
+} from "../../ui/select";
+import { useToast } from "../../../hooks/use-toast"; // Caminho corrigido
+import { MenuItem, Category, Variation, VariationGroup } from "../../types/menu";
+import { supabase } from '../../lib/supabaseClient';
 
 interface MenuItemsTabProps {
   menuItems: MenuItem[];
