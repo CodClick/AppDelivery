@@ -1,12 +1,33 @@
-
 import React, { useState } from "react";
-import { Variation, Category } from "@/types/menu";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Edit, Plus, Trash2 } from "lucide-react";
-import { deleteVariation } from "@/services/variationService";
-import { EditVariationModal } from "./EditVariationModal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import { Button } from "../ui/button";
+import { Edit, Trash, PlusCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { useToast } from "../hooks/use-toast";
+import { Variation, Category } from "../types/menu";
+import { supabase } from '../lib/supabaseClient';
 
 interface VariationsTabProps {
   variations: Variation[];
@@ -15,143 +36,238 @@ interface VariationsTabProps {
   onDataChange: () => void;
 }
 
-export const VariationsTab = ({
-  variations,
-  categories,
-  loading,
-  onDataChange,
-}: VariationsTabProps) => {
+const VariationsTab = ({ variations, categories, loading, onDataChange }: VariationsTabProps) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentVariation, setCurrentVariation] = useState<Variation | null>(null);
+  const [formState, setFormState] = useState({
+    name: "",
+    price: "",
+    category_id: "",
+  });
   const { toast } = useToast();
-  const [editVariation, setEditVariation] = useState<Variation | null>(null);
 
-  const handleAddVariation = () => {
-    const newVariation: Variation = {
-      id: "", // ID vazio para nova variação
-      name: "",
-      description: "",
-      additionalPrice: 0,
-      available: true,
-      categoryIds: []
-    };
-    setEditVariation(newVariation);
+  const isFormValid = () => {
+    return formState.name && formState.price && formState.category_id;
   };
 
-  const handleEditVariation = (variation: Variation) => {
-    setEditVariation({...variation});
-  };
+  const handleCreateOrUpdateVariation = async () => {
+    try {
+      if (!isFormValid()) {
+        toast({
+          title: "Erro de Validação",
+          description: "Por favor, preencha todos os campos obrigatórios.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  const handleDeleteVariation = async (variation: Variation) => {
-    console.log("VariationsTab: Tentando deletar variação:", variation);
-    console.log("VariationsTab: ID da variação:", variation.id);
-    console.log("VariationsTab: Tipo do ID:", typeof variation.id);
-    
-    if (!variation.id) {
-      console.error("VariationsTab: Variação não possui ID válido:", variation);
-      toast({
-        title: "Erro",
-        description: "Variação não possui ID válido para exclusão",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (currentVariation) {
+        // Update existing variation
+        const { error } = await supabase
+          .from('variations')
+          .update({
+            name: formState.name,
+            price: parseFloat(formState.price),
+            category_id: formState.category_id,
+          })
+          .eq('id', currentVariation.id);
 
-    if (window.confirm(`Tem certeza que deseja excluir a variação "${variation.name}"?`)) {
-      try {
-        console.log("VariationsTab: Confirmação recebida, chamando deleteVariation com ID:", variation.id);
-        await deleteVariation(variation.id);
+        if (error) throw error;
+
         toast({
           title: "Sucesso",
-          description: "Variação excluída com sucesso",
+          description: `Variação "${formState.name}" atualizada.`,
+          variant: "default",
         });
-        console.log("VariationsTab: Variação deletada com sucesso, chamando onDataChange");
+      } else {
+        // Create new variation
+        const { error } = await supabase
+          .from('variations')
+          .insert({
+            name: formState.name,
+            price: parseFloat(formState.price),
+            category_id: formState.category_id,
+            empresa_id: "d2111847-f0ed-467d-a0b4-4ca31feaa7b4" // Hardcoded for now
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: `Variação "${formState.name}" criada.`,
+          variant: "default",
+        });
+      }
+
+      setIsDialogOpen(false);
+      onDataChange();
+    } catch (error) {
+      console.error("Erro ao salvar variação:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao salvar a variação. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteVariation = async (id: string, name: string) => {
+    if (window.confirm(`Tem certeza de que deseja excluir a variação "${name}"?`)) {
+      try {
+        const { error } = await supabase.from('variations').delete().eq('id', id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: `Variação "${name}" excluída.`,
+          variant: "default",
+        });
         onDataChange();
       } catch (error) {
-        console.error("VariationsTab: Erro ao excluir variação:", error);
+        console.error("Erro ao excluir variação:", error);
         toast({
           title: "Erro",
-          description: `Não foi possível excluir a variação: ${error.message}`,
+          description: "Ocorreu um erro ao excluir a variação. Tente novamente.",
           variant: "destructive",
         });
       }
     }
   };
 
+  const handleOpenDialog = (variation?: Variation) => {
+    setCurrentVariation(variation || null);
+    if (variation) {
+      setFormState({
+        name: variation.name,
+        price: variation.price.toString(),
+        category_id: variation.category_id || "",
+      });
+    } else {
+      setFormState({
+        name: "",
+        price: "",
+        category_id: "",
+      });
+    }
+    setIsDialogOpen(true);
+  };
+
   return (
-    <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Variações</h2>
-        <Button onClick={handleAddVariation}>
-          <Plus className="h-4 w-4 mr-1" />
-          Nova Variação
-        </Button>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {variations.map(variation => (
-          <Card key={variation.id} className="overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold">{variation.name}</h3>
-                  {variation.description && (
-                    <p className="text-sm text-gray-600 mb-2">{variation.description}</p>
-                  )}
-                  {variation.additionalPrice > 0 && (
-                    <p className="text-sm font-semibold">
-                      + R$ {variation.additionalPrice.toFixed(2)}
-                    </p>
-                  )}
-                  <div className="flex items-center mt-2">
-                    <span className={`inline-block h-2 w-2 rounded-full mr-2 ${variation.available ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span className="text-xs text-gray-500">
-                      {variation.available ? 'Disponível' : 'Indisponível'}
-                    </span>
-                  </div>
-                  
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500">
-                      Categorias: {
-                        variation.categoryIds.length > 0 
-                          ? variation.categoryIds.map(id => 
-                            categories.find(c => c.id === id)?.name || id
-                          ).join(", ")
-                          : "Todas"
-                      }
-                    </p>
-                  </div>
-                  
-                  <p className="text-xs text-gray-400 mt-1">
-                    ID: {variation.id}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => handleEditVariation(variation)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteVariation(variation)}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => handleOpenDialog()}
+              className="bg-primary-500 hover:bg-primary-600 text-white"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Variação
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{currentVariation ? "Editar Variação" : "Adicionar Variação"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Nome
+                </Label>
+                <Input
+                  id="name"
+                  value={formState.name}
+                  onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                  className="col-span-3"
+                />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {variations.length === 0 && !loading && (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            Nenhuma variação encontrada. Adicione variações para personalizar os itens do menu.
-          </div>
-        )}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="price" className="text-right">
+                  Preço
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={formState.price}
+                  onChange={(e) => setFormState({ ...formState, price: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="category" className="text-right">
+                  Categoria
+                </Label>
+                <Select
+                  value={formState.category_id}
+                  onValueChange={(value) => setFormState({ ...formState, category_id: value })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button onClick={handleCreateOrUpdateVariation}>
+              {currentVariation ? "Salvar Alterações" : "Adicionar"}
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {editVariation && (
-        <EditVariationModal
-          editVariation={editVariation}
-          setEditVariation={setEditVariation}
-          categories={categories}
-          onSuccess={onDataChange}
-        />
+      {loading ? (
+        <div className="text-center">Carregando variações...</div>
+      ) : variations.length === 0 ? (
+        <div className="text-center">Nenhuma variação encontrada.</div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Preço</TableHead>
+              <TableHead>Categoria</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {variations.map((variation) => (
+              <TableRow key={variation.id}>
+                <TableCell>{variation.name}</TableCell>
+                <TableCell>R$ {variation.price.toFixed(2)}</TableCell>
+                <TableCell>
+                  {categories.find((cat) => cat.id === variation.category_id)?.name || "N/A"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenDialog(variation)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteVariation(variation.id, variation.name)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
-    </>
+    </div>
   );
 };
+
+export { VariationsTab };
