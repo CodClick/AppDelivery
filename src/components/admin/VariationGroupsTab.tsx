@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { VariationGroup, Variation } from "@/types/menu";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +31,13 @@ export const VariationGroupsTab = ({
     const uniqueGroups = new Map<string, VariationGroup>();
     const duplicateIds = new Set<string>();
     
-    variationGroups.forEach(group => {
+    // Processar os grupos e garantir que a propriedade 'variations' seja um array
+    const processedGroups = variationGroups.map(group => ({
+        ...group,
+        variations: group.variations ?? []
+    }));
+
+    processedGroups.forEach(group => {
       if (uniqueGroups.has(group.id)) {
         duplicateIds.add(group.id);
         console.warn(`DUPLICATA LOCAL DETECTADA: ID ${group.id}`);
@@ -63,7 +68,7 @@ export const VariationGroupsTab = ({
   };
 
   const handleEditExistingVariationGroup = (group: VariationGroup) => {
-    setEditVariationGroup({...group});
+    setEditVariationGroup({ ...group });
   };
 
   const handleDeleteExistingVariationGroup = async (group: VariationGroup) => {
@@ -150,67 +155,70 @@ export const VariationGroupsTab = ({
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {cleanVariationGroups.groups.map(group => (
-          <Card key={group.id} className="overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold">{group.name}</h3>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {group.minRequired === group.maxAllowed
-                      ? `Exatamente ${group.minRequired} seleção(ões) necessária(s)`
-                      : `De ${group.minRequired} até ${group.maxAllowed} seleções`
-                    }
-                  </p>
-                  
-                  {group.customMessage && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Mensagem: {group.customMessage}
-                    </p>
-                  )}
-
-                  <div className="mt-3">
-                    <p className="text-sm font-semibold mb-1">Variações:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {group.variations.map(varId => (
-                        <span key={varId} className="inline-block bg-gray-200 rounded-full px-2 py-1 text-xs">
-                          {getVariationName(varId)}
-                        </span>
-                      ))}
+        {cleanVariationGroups.groups.length > 0 ? (
+          cleanVariationGroups.groups.map(group => (
+            <Card key={group.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold">{group.name}</h3>
                     </div>
+                    <p className="text-sm text-gray-600">
+                      {group.minRequired === group.maxAllowed
+                        ? `Exatamente ${group.minRequired} seleção(ões) necessária(s)`
+                        : `De ${group.minRequired} até ${group.maxAllowed} seleções`
+                      }
+                    </p>
+                    
+                    {group.customMessage && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Mensagem: {group.customMessage}
+                      </p>
+                    )}
+
+                    <div className="mt-3">
+                      <p className="text-sm font-semibold mb-1">Variações:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {/* Correção aqui */}
+                        {(group.variations ?? []).map(varId => (
+                          <span key={varId} className="inline-block bg-gray-200 rounded-full px-2 py-1 text-xs">
+                            {getVariationName(varId)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs text-gray-400 mt-2">
+                      ID: {group.id}
+                    </p>
                   </div>
-                  
-                  <p className="text-xs text-gray-400 mt-2">
-                    ID: {group.id}
-                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleEditExistingVariationGroup(group)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleDeleteExistingVariationGroup(group)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => handleEditExistingVariationGroup(group)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => handleDeleteExistingVariationGroup(group)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {cleanVariationGroups.groups.length === 0 && !loading && (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            Nenhum grupo de variação encontrado. Adicione grupos para organizar as variações.
-          </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          !loading && (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              Nenhum grupo de variação encontrado. Adicione grupos para organizar as variações.
+            </div>
+          )
         )}
       </div>
 
