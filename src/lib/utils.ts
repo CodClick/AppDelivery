@@ -13,7 +13,6 @@ export function getSupabaseImageUrl(filePath: string | null | undefined): string
   if (!filePath) {
     return "";
   }
-  // Remove o nome do bucket do caminho, se ele já estiver presente
   const cleanPath = filePath.startsWith("menu_images/") ? filePath.substring("menu_images/".length) : filePath;
   
   const { data } = supabase.storage.from("menu_images").getPublicUrl(cleanPath);
