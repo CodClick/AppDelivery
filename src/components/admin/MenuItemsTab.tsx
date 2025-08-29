@@ -1,13 +1,34 @@
-import React, { useState, useEffect } from "react";
-import { MenuItem, Category, Variation, VariationGroup } from "@/types/menu";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Edit, Plus, Trash2 } from "lucide-react";
-import { deleteMenuItem } from "@/services/menuItemService";
-import { EditMenuItemModal } from "./EditMenuItemModal";
-import { formatCurrency, getSupabaseImageUrl } from "@/lib/utils";
-// Removido: import { supabase } from "@/lib/supabaseClient";
+import React, { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import { Button } from "../ui/button";
+import { Edit, Trash, PlusCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { useToast } from "../../hooks/use-toast"; // Caminho corrigido
+import { MenuItem, Category, Variation, VariationGroup } from "../../types/menu";
+import { supabase } from '../../lib/supabaseClient';
 
 interface MenuItemsTabProps {
   menuItems: MenuItem[];
@@ -18,163 +39,270 @@ interface MenuItemsTabProps {
   onDataChange: () => void;
 }
 
-export const MenuItemsTab = ({
-  menuItems,
-  categories,
-  variations,
-  variationGroups,
-  loading,
-  onDataChange,
-}: MenuItemsTabProps) => {
+const MenuItemsTab = ({ menuItems, categories, variations, variationGroups, loading, onDataChange }: MenuItemsTabProps) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentItem, setCurrentItem] = useState<MenuItem | null>(null);
+  const [formState, setFormState] = useState({
+    name: "",
+    description: "",
+    price: "",
+    category_id: "",
+    image_url: "",
+  });
   const { toast } = useToast();
-  const [editItem, setEditItem] = useState<MenuItem | null>(null);
 
-  const handleAddItem = () => {
-    const newItem: MenuItem = {
-      id: "",
-      name: "",
-      description: "",
-      price: 0,
-      available: true,
-      categoryId: null,
-      variationGroups: [],
-    };
-    setEditItem(newItem);
+  const isFormValid = () => {
+    return formState.name && formState.description && formState.price && formState.category_id;
   };
 
-  const handleEditItem = (item: MenuItem) => {
-    setEditItem({
-      ...item,
-      image_path: item.image_path || null,
-    });
-  };
+  const handleCreateOrUpdateItem = async () => {
+    try {
+      if (!isFormValid()) {
+        toast({
+          title: "Erro de Validação",
+          description: "Por favor, preencha todos os campos obrigatórios.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  const handleDeleteItem = async (item: MenuItem) => {
-    if (window.confirm(`Tem certeza que deseja excluir o item "${item.name}"?`)) {
-      try {
-        await deleteMenuItem(item.id);
+      if (currentItem) {
+        // Update existing item
+        const { error } = await supabase
+          .from('menu_items')
+          .update({
+            name: formState.name,
+            description: formState.description,
+            price: parseFloat(formState.price),
+            category_id: formState.category_id,
+            image_url: formState.image_url,
+          })
+          .eq('id', currentItem.id);
+        
+        if (error) throw error;
+        
         toast({
           title: "Sucesso",
-          description: "Item excluído com sucesso",
+          description: `Item "${formState.name}" atualizado.`,
+          variant: "default",
+        });
+      } else {
+        // Create new item
+        const { error } = await supabase
+          .from('menu_items')
+          .insert({
+            name: formState.name,
+            description: formState.description,
+            price: parseFloat(formState.price),
+            category_id: formState.category_id,
+            image_url: formState.image_url,
+            empresa_id: "d2111847-f0ed-467d-a0b4-4ca31feaa7b4" // Hardcoded for now
+          });
+        
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: `Item "${formState.name}" criado.`,
+          variant: "default",
+        });
+      }
+
+      setIsDialogOpen(false);
+      onDataChange();
+    } catch (error) {
+      console.error("Erro ao salvar item do menu:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao salvar o item do menu. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteItem = async (id: string, name: string) => {
+    if (window.confirm(`Tem certeza de que deseja excluir o item "${name}"?`)) {
+      try {
+        const { error } = await supabase.from('menu_items').delete().eq('id', id);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: `Item "${name}" excluído.`,
+          variant: "default",
         });
         onDataChange();
       } catch (error) {
+        console.error("Erro ao excluir item do menu:", error);
         toast({
           title: "Erro",
-          description: `Não foi possível excluir o item: ${error.message}`,
+          description: "Ocorreu um erro ao excluir o item do menu. Tente novamente.",
           variant: "destructive",
         });
       }
     }
   };
 
-  const getCategoryName = (categoryId: string | null) => {
-    const category = categories.find((c) => c.id === categoryId);
-    return category ? category.name : "Nenhuma";
+  const handleOpenDialog = (item?: MenuItem) => {
+    setCurrentItem(item || null);
+    if (item) {
+      setFormState({
+        name: item.name,
+        description: item.description,
+        price: item.price.toString(),
+        category_id: item.category_id || "",
+        image_url: item.image_url || "",
+      });
+    } else {
+      setFormState({
+        name: "",
+        description: "",
+        price: "",
+        category_id: "",
+        image_url: "",
+      });
+    }
+    setIsDialogOpen(true);
   };
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Itens do Menu</h2>
-        <Button onClick={handleAddItem}>
-          <Plus className="h-4 w-4 mr-1" />
-          Novo Item
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {menuItems.length > 0 ? (
-          menuItems.map((item) => (
-            <Card key={item.id} className="overflow-hidden">
-              <CardContent className="p-4 flex flex-col h-full">
-                <div className="w-full h-32 bg-gray-200 rounded-md mb-2 overflow-hidden flex-shrink-0">
-                  {item.image_path ? (
-                    <img
-                      src={getSupabaseImageUrl(item.image_path)}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm text-center">
-                      Sem imagem
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-grow flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold">{item.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                    <p className="text-sm font-semibold text-green-600">
-                      {formatCurrency(item.price)}
-                    </p>
-                    <div className="flex items-center mt-2">
-                      <span
-                        className={`inline-block h-2 w-2 rounded-full mr-2 ${
-                          item.available ? "bg-green-500" : "bg-red-500"
-                        }`}
-                      ></span>
-                      <span className="text-xs text-gray-500">
-                        {item.available ? "Disponível" : "Indisponível"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500">
-                      Categoria: {getCategoryName(item.categoryId)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Variações: {
-                        (item.variationGroups ?? []).length > 0
-                          ? (item.variationGroups ?? []).map(group => group.name).join(", ")
-                          : "Nenhum"
-                      }
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      ID: {item.id}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-4 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEditItem(item)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDeleteItem(item)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          !loading && (
-            <div className="col-span-full text-center py-8 text-gray-500">
-              Nenhum item de menu encontrado.
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => handleOpenDialog()}
+              className="bg-primary-500 hover:bg-primary-600 text-white"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{currentItem ? "Editar Item" : "Adicionar Item"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Nome
+                </Label>
+                <Input
+                  id="name"
+                  value={formState.name}
+                  onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Descrição
+                </Label>
+                <Textarea
+                  id="description"
+                  value={formState.description}
+                  onChange={(e) => setFormState({ ...formState, description: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="price" className="text-right">
+                  Preço
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={formState.price}
+                  onChange={(e) => setFormState({ ...formState, price: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="category" className="text-right">
+                  Categoria
+                </Label>
+                <Select
+                  value={formState.category_id}
+                  onValueChange={(value) => setFormState({ ...formState, category_id: value })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="image_url" className="text-right">
+                  URL da Imagem
+                </Label>
+                <Input
+                  id="image_url"
+                  value={formState.image_url}
+                  onChange={(e) => setFormState({ ...formState, image_url: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
             </div>
-          )
-        )}
+            <Button onClick={handleCreateOrUpdateItem}>
+              {currentItem ? "Salvar Alterações" : "Adicionar"}
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {editItem && (
-        <EditMenuItemModal
-          editItem={editItem}
-          setEditItem={setEditItem}
-          categories={categories}
-          variations={variations}
-          variationGroups={variationGroups}
-          onSuccess={onDataChange}
-        />
+      {loading ? (
+        <div className="text-center">Carregando itens do menu...</div>
+      ) : menuItems.length === 0 ? (
+        <div className="text-center">Nenhum item do menu encontrado.</div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Preço</TableHead>
+              <TableHead>Categoria</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {menuItems.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.name}</TableCell>
+                <TableCell>R$ {item.price.toFixed(2)}</TableCell>
+                <TableCell>
+                  {categories.find((cat) => cat.id === item.category_id)?.name || "N/A"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenDialog(item)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteItem(item.id, item.name)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
-    </>
+    </div>
   );
 };
+
+export { MenuItemsTab };
