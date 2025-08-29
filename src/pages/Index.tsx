@@ -48,12 +48,19 @@ const Index = () => {
                 // 2. Buscar as categorias da empresa
                 const { data: categoriesData, error: categoriesError } = await supabase
                     .from('categories')
-                    .select('id, name, order')
+                    .select('id, name, display_order')
                     .eq('empresa_id', empresaId)
-                    .order('order', { ascending: true });
+                    .order('display_order', { ascending: true });
 
                 if (categoriesError) throw new Error(categoriesError.message);
-                const categoriesWithAll = [{ id: "all", name: "Todos", order: 0 }, ...categoriesData];
+                
+                // Mapeia os dados para o tipo Category, ajustando o nome da coluna
+                const formattedCategories = categoriesData.map(cat => ({
+                    id: cat.id,
+                    name: cat.name,
+                    order: cat.display_order // Usa o nome de coluna correto e mapeia para 'order'
+                }));
+                const categoriesWithAll = [{ id: "all", name: "Todos", order: 0 }, ...formattedCategories];
                 setCategories(categoriesWithAll);
 
                 // 3. Buscar os itens do menu da empresa
