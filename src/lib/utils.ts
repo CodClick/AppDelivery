@@ -7,20 +7,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase URL or anonymous key environment variables");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 export function getSupabaseImageUrl(filePath: string | null | undefined): string {
   if (!filePath) {
     return "";
   }
+  // Remove o nome do bucket do caminho, se ele já estiver presente
   const cleanPath = filePath.startsWith("menu_images/") ? filePath.substring("menu_images/".length) : filePath;
+
+  // Removido a criação do cliente aqui
+  // O cliente será passado como parâmetro
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
   
   const { data } = supabase.storage.from("menu_images").getPublicUrl(cleanPath);
   
