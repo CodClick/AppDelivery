@@ -1,29 +1,8 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+// lib/supabaseClient.ts
+import { createClient } from "@supabase/supabase-js";
 
-// Ensure the variables are accessible to both server and client components
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://hwtngullwfecizxsgkea.supabase.co";
+const supabaseAnonKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3dG5ndWxsd2ZlY2l6eHNna2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMTUyMjUsImV4cCI6MjA3MDc5MTIyNX0.B2nUIJ7LB8asKi2Zxh7TAW3fBaJa1Q81BzR0bkFzdOo";
 
-// Declare a client variable that might be a SupabaseClient or null
-let supabaseClient: SupabaseClient | null = null;
-
-export const getSupabaseClient = (): SupabaseClient => {
-  // If a client instance already exists, return it
-  if (supabaseClient) {
-    return supabaseClient;
-  }
-
-  // Throw a clear error if the variables are missing
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing Supabase URL or anonymous key environment variables"
-    );
-  }
-
-  // Otherwise, create a new client and assign it
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-  return supabaseClient;
-};
-
-// Export a single, global instance
-export const supabase = getSupabaseClient();
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
