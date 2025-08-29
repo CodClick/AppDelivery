@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Variation, Category } from "@/types/menu";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,14 +36,14 @@ export const VariationsTab = ({
   };
 
   const handleEditVariation = (variation: Variation) => {
-    setEditVariation({...variation});
+    setEditVariation({ ...variation });
   };
 
   const handleDeleteVariation = async (variation: Variation) => {
     console.log("VariationsTab: Tentando deletar variação:", variation);
     console.log("VariationsTab: ID da variação:", variation.id);
     console.log("VariationsTab: Tipo do ID:", typeof variation.id);
-    
+
     if (!variation.id) {
       console.error("VariationsTab: Variação não possui ID válido:", variation);
       toast({
@@ -85,62 +84,64 @@ export const VariationsTab = ({
           Nova Variação
         </Button>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {variations.map(variation => (
-          <Card key={variation.id} className="overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold">{variation.name}</h3>
-                  {variation.description && (
-                    <p className="text-sm text-gray-600 mb-2">{variation.description}</p>
-                  )}
-                  {variation.additionalPrice > 0 && (
-                    <p className="text-sm font-semibold">
-                      + R$ {variation.additionalPrice.toFixed(2)}
+        {variations.length > 0 ? (
+          variations.map(variation => (
+            <Card key={variation.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold">{variation.name}</h3>
+                    {variation.description && (
+                      <p className="text-sm text-gray-600 mb-2">{variation.description}</p>
+                    )}
+                    {variation.additionalPrice > 0 && (
+                      <p className="text-sm font-semibold">
+                        + R$ {variation.additionalPrice.toFixed(2)}
+                      </p>
+                    )}
+                    <div className="flex items-center mt-2">
+                      <span className={`inline-block h-2 w-2 rounded-full mr-2 ${variation.available ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                      <span className="text-xs text-gray-500">
+                        {variation.available ? 'Disponível' : 'Indisponível'}
+                      </span>
+                    </div>
+
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500">
+                        Categorias: {
+                          (variation.categoryIds ?? []).length > 0
+                            ? (variation.categoryIds ?? []).map(id =>
+                              categories.find(c => c.id === id)?.name || id
+                            ).join(", ")
+                            : "Todas"
+                        }
+                      </p>
+                    </div>
+
+                    <p className="text-xs text-gray-400 mt-1">
+                      ID: {variation.id}
                     </p>
-                  )}
-                  <div className="flex items-center mt-2">
-                    <span className={`inline-block h-2 w-2 rounded-full mr-2 ${variation.available ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span className="text-xs text-gray-500">
-                      {variation.available ? 'Disponível' : 'Indisponível'}
-                    </span>
                   </div>
-                  
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500">
-                      Categorias: {
-                        variation.categoryIds.length > 0 
-                          ? variation.categoryIds.map(id => 
-                            categories.find(c => c.id === id)?.name || id
-                          ).join(", ")
-                          : "Todas"
-                      }
-                    </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => handleEditVariation(variation)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteVariation(variation)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
                   </div>
-                  
-                  <p className="text-xs text-gray-400 mt-1">
-                    ID: {variation.id}
-                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => handleEditVariation(variation)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteVariation(variation)}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {variations.length === 0 && !loading && (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            Nenhuma variação encontrada. Adicione variações para personalizar os itens do menu.
-          </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          !loading && (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              Nenhuma variação encontrada. Adicione variações para personalizar os itens do menu.
+            </div>
+          )
         )}
       </div>
 
