@@ -1,9 +1,11 @@
-// lib/supabaseClient.ts
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = "https://hwtngullwfecizxsgkea.supabase.co";
-const supabaseAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3dG5ndWxsd2ZlY2l6eHNna2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMTUyMjUsImV4cCI6MjA3MDc5MTIyNX0.B2nUIJ7LB8asKi2Zxh7TAW3fBaJa1Q81BzR0bkFzdOo";
+// Acessa as variáveis de ambiente a partir do arquivo .env.local
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing Supabase URL or anonymous key environment variables");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
