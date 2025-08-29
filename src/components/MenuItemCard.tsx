@@ -79,7 +79,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item }) => {
       <div className="food-item bg-white rounded-lg overflow-hidden shadow-md p-4 flex flex-col">
         <div className="h-48 overflow-hidden rounded-md mb-4">
           <img
-            src={item.image}
+            src={item.image_url}
             alt={item.name}
             className="w-full h-full object-cover transition-transform hover:scale-105"
             onError={(e) => {
