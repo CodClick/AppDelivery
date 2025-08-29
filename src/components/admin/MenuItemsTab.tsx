@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { deleteMenuItem } from "@/services/menuItemService";
 import { EditMenuItemModal } from "./EditMenuItemModal";
-import { formatCurrency, getSupabaseImageUrl } from "@/lib/utils"; // Importação Corrigida
+import { formatCurrency, getSupabaseImageUrl } from "@/lib/utils";
+// Removido: import { supabase } from "@/lib/supabaseClient";
 
 interface MenuItemsTabProps {
   menuItems: MenuItem[];
