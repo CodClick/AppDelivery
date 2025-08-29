@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { deleteMenuItem } from "@/services/menuItemService";
 import { EditMenuItemModal } from "./EditMenuItemModal";
-import { formatCurrency, getSupabaseImageUrl } from "@/lib/utils";
+import { formatCurrency, getSupabaseImageUrl } from "@/lib/utils"; // Importação Corrigida
 
 interface MenuItemsTabProps {
   menuItems: MenuItem[];
@@ -42,7 +42,6 @@ export const MenuItemsTab = ({
   };
 
   const handleEditItem = (item: MenuItem) => {
-    // Garante que a propriedade image_path exista no objeto de edição
     setEditItem({
       ...item,
       image_path: item.image_path || null,
@@ -88,7 +87,6 @@ export const MenuItemsTab = ({
           menuItems.map((item) => (
             <Card key={item.id} className="overflow-hidden">
               <CardContent className="p-4 flex flex-col h-full">
-                {/* Imagem do Item */}
                 <div className="w-full h-32 bg-gray-200 rounded-md mb-2 overflow-hidden flex-shrink-0">
                   {item.image_path ? (
                     <img
@@ -103,7 +101,6 @@ export const MenuItemsTab = ({
                   )}
                 </div>
 
-                {/* Detalhes do Item */}
                 <div className="flex-grow flex flex-col justify-between">
                   <div>
                     <h3 className="font-bold">{item.name}</h3>
@@ -139,7 +136,6 @@ export const MenuItemsTab = ({
                   </div>
                 </div>
 
-                {/* Botões de Ação */}
                 <div className="flex justify-end gap-2 mt-4 flex-shrink-0">
                   <Button
                     size="sm"
