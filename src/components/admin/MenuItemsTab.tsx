@@ -6,8 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { deleteMenuItem } from "@/services/menuItemService";
 import { EditMenuItemModal } from "./EditMenuItemModal";
-import { formatCurrency } from "@/lib/utils";
-import { supabase } from "@/lib/supabaseClient";
+import { formatCurrency, getSupabaseImageUrl } from "@/lib/utils";
 
 interface MenuItemsTabProps {
   menuItems: MenuItem[];
@@ -16,15 +15,6 @@ interface MenuItemsTabProps {
   variationGroups: VariationGroup[];
   loading: boolean;
   onDataChange: () => void;
-}
-
-// Função auxiliar para construir a URL pública da imagem do Supabase
-function getSupabaseImageUrl(filePath: string): string {
-  if (!filePath) {
-    return ""; // Retorna string vazia se o caminho não existir
-  }
-  const { data } = supabase.storage.from("menu_images").getPublicUrl(filePath);
-  return data.publicUrl;
 }
 
 export const MenuItemsTab = ({
@@ -52,7 +42,11 @@ export const MenuItemsTab = ({
   };
 
   const handleEditItem = (item: MenuItem) => {
-    setEditItem({ ...item });
+    // Garante que a propriedade image_path exista no objeto de edição
+    setEditItem({
+      ...item,
+      image_path: item.image_path || null,
+    });
   };
 
   const handleDeleteItem = async (item: MenuItem) => {
@@ -79,11 +73,6 @@ export const MenuItemsTab = ({
     return category ? category.name : "Nenhuma";
   };
 
-  const getVariationGroupName = (groupId: string): string => {
-    const group = variationGroups.find((g) => g.id === groupId);
-    return group ? group.name : "Grupo não encontrado";
-  };
-
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -101,7 +90,6 @@ export const MenuItemsTab = ({
               <CardContent className="p-4 flex flex-col h-full">
                 {/* Imagem do Item */}
                 <div className="w-full h-32 bg-gray-200 rounded-md mb-2 overflow-hidden flex-shrink-0">
-                  {/* === ALTERAÇÃO FEITA AQUI === */}
                   {item.image_path ? (
                     <img
                       src={getSupabaseImageUrl(item.image_path)}
@@ -140,8 +128,8 @@ export const MenuItemsTab = ({
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       Variações: {
-                        item.variationGroups && item.variationGroups.length > 0
-                          ? item.variationGroups.map(group => group.name).join(", ")
+                        (item.variationGroups ?? []).length > 0
+                          ? (item.variationGroups ?? []).map(group => group.name).join(", ")
                           : "Nenhum"
                       }
                     </p>
