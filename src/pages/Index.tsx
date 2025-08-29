@@ -54,11 +54,10 @@ const Index = () => {
 
                 if (categoriesError) throw new Error(categoriesError.message);
                 
-                // Mapeia os dados para o tipo Category, ajustando o nome da coluna
                 const formattedCategories = categoriesData.map(cat => ({
                     id: cat.id,
                     name: cat.name,
-                    order: cat.display_order // Usa o nome de coluna correto e mapeia para 'order'
+                    order: cat.display_order
                 }));
                 const categoriesWithAll = [{ id: "all", name: "Todos", order: 0 }, ...formattedCategories];
                 setCategories(categoriesWithAll);
@@ -72,16 +71,15 @@ const Index = () => {
                         description,
                         price,
                         image_url,
-                        category (id)
+                        category_id
                     `)
                     .eq('empresa_id', empresaId);
 
                 if (itemsError) throw new Error(itemsError.message);
 
-                // Formatar os itens para ter apenas o ID da categoria
                 const formattedItems = menuItemsData.map(item => ({
                     ...item,
-                    category: item.category?.id || null
+                    category: item.category_id
                 }));
                 setMenuItems(formattedItems);
 
