@@ -1,41 +1,106 @@
+//app.tsx de 310825 21:06
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LucideShoppingCart } from "lucide-react";
-import { User, Session, createClient } from "@supabase/supabase-js";
 
-// Definição dos tipos para evitar erros de compilação
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  empresaId: string | null;
-  loading: boolean;
-  signIn: any;
-  signOut: any;
-  signUp: any;
+// Definição manual dos tipos do Supabase
+interface User {
+  id: string;
+  email: string;
+  user_metadata?: { [key: string]: any };
 }
-
-interface CartContextType {
-  cart: any[];
-  itemCount: number;
-  totalPrice: number;
-  isCartOpen: boolean;
-  setIsCartOpen: (isOpen: boolean) => void;
-  addItem: (item: any) => void;
-  removeItem: (itemId: string) => void;
-  clearCart: () => void;
+interface Session {
+  access_token: string;
+  user: User;
 }
+interface SupabaseClient {
+  auth: {
+    onAuthStateChange: (callback: (event: string, session: Session | null) => void) => { subscription: { unsubscribe: () => void } };
+    signInWithPassword: (credentials: any) => Promise<any>;
+    signOut: () => Promise<void>;
+    signUp: (credentials: any) => Promise<any>;
+  };
+  from: (table: string) => any;
+}
+const createClient = (supabaseUrl: string, supabaseAnonKey: string): SupabaseClient => {
+  // Mock do cliente Supabase para o ambiente de arquivo único.
+  const mockAuth = {
+    onAuthStateChange: (callback: (event: string, session: Session | null) => void) => {
+      // Simula uma mudança de estado de autenticação
+      const mockSession: Session | null = JSON.parse(localStorage.getItem('supabase_session') || 'null');
+      if (mockSession) {
+        callback('SIGNED_IN', mockSession);
+      } else {
+        callback('SIGNED_OUT', null);
+      }
+      return { subscription: { unsubscribe: () => {} } };
+    },
+    signInWithPassword: async ({ email, password }: any) => {
+      // Simula um login
+      const mockSession: Session = { access_token: 'mock_token', user: { id: 'mock_user_id', email, user_metadata: { role: 'cliente' } } };
+      localStorage.setItem('supabase_session', JSON.stringify(mockSession));
+      return { data: { session: mockSession }, error: null };
+    },
+    signOut: async () => {
+      // Simula um logout
+      localStorage.removeItem('supabase_session');
+      return { error: null };
+    },
+    signUp: async ({ email, password }: any) => {
+      // Simula um registro
+      const mockUser: User = { id: 'mock_user_id_new', email, user_metadata: { role: 'cliente' } };
+      return { data: { user: mockUser }, error: null };
+    },
+  };
 
-// Configuração do Supabase (substitua com suas chaves reais, se necessário)
+  const mockFrom = (table: string) => ({
+    select: (fields: string) => ({
+      eq: (column: string, value: any) => ({
+        single: async () => {
+          // Simula a busca de dados do perfil
+          if (table === 'usuarios' && value === 'mock_user_id') {
+            const mockData = {
+              role: 'admin',
+              empresa_id: 'mock_empresa_id',
+              name: 'John Doe',
+              phone: '11999999999',
+              cep: '12345678',
+              street: 'Rua Mock',
+              number: '123',
+              complement: '',
+              neighborhood: 'Bairro Mock',
+              city: 'Cidade Mock',
+              state: 'SP'
+            };
+            return { data: mockData, error: null };
+          }
+          return { data: null, error: { message: 'Dados de perfil não encontrados.' } };
+        },
+        order: (field: string, options: any) => ({
+            // Simula a ordenação dos dados
+            data: [],
+            error: null
+        })
+      })
+    }),
+  });
+
+  return {
+    auth: mockAuth,
+    from: mockFrom
+  };
+};
+
 const supabaseUrl = "https://your-project-id.supabase.co";
 const supabaseAnonKey = "your-anon-key";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const queryClient = new QueryClient();
 
-// UI Components (simulando shadcn/ui)
-const Toaster = () => <div className="fixed bottom-4 right-4">Toaster</div>;
-const Sonner = () => <div className="fixed bottom-4 left-4">Sonner</div>;
+// Mocking (simulando componentes e hooks de bibliotecas externas)
+const Toaster = () => <div className="fixed bottom-4 right-4 z-[9999] p-4 text-white bg-green-500 rounded-md shadow-lg">Toaster</div>;
+const Sonner = () => <div className="fixed bottom-4 left-4 z-[9999] p-4 text-white bg-blue-500 rounded-md shadow-lg">Sonner</div>;
 const TooltipProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 const Skeleton = ({ className }: { className: string }) => <div className={`bg-gray-300 rounded-lg ${className}`}></div>;
 const Button = ({ className, onClick, children }: { className: string, onClick?: () => void, children: React.ReactNode }) => <button className={`p-4 rounded-md ${className}`} onClick={onClick}>{children}</button>;
@@ -50,41 +115,93 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-// Contexts
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const CartContext = createContext<CartContextType | undefined>(undefined);
+// Auth Context & Provider (integrado do seu AuthContext.tsx)
+interface UserAddress {
+  cep?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+}
 
-// Auth Provider
-const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [empresaId, setEmpresaId] = useState<string | null>(null);
+interface CustomUser extends User {
+  role?: string;
+  empresa_id?: string;
+  name?: string;
+  phone?: string;
+  address?: UserAddress;
+}
+
+interface AuthContextType {
+  currentUser: CustomUser | null;
+  userRole: string | null;
+  loading: boolean;
+  signUp: (email: string, password: string, name?: string, phone?: string) => Promise<any>;
+  signIn: (email: string, password: string) => Promise<any>;
+  logOut: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<CustomUser | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const useToast = () => ({
+    toast: (options: any) => console.log("Toast:", options.title, options.description),
+  });
+  const { toast } = useToast();
+
+  const authService = {
+    signUp: async (email: string, password: string) => supabase.auth.signUp({ email, password }),
+    signIn: async (email: string, password: string) => supabase.auth.signInWithPassword({ email, password }),
+    logOut: async () => supabase.auth.signOut(),
+  };
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setSession(session);
-        const currentUser = session?.user || null;
-        setUser(currentUser);
+        setLoading(true);
+        const supabaseUser = session?.user || null;
 
-        if (currentUser) {
+        if (supabaseUser) {
           const { data, error } = await supabase
             .from("usuarios")
-            .select("empresa_id")
-            .eq("id", currentUser.id)
+            .select("role, empresa_id, name, phone, cep, street, number, complement, neighborhood, city, state")
+            .eq("id", supabaseUser.id)
             .single();
 
-          if (error) {
-            console.error("Erro ao buscar empresaId:", error);
-            setEmpresaId(null);
-          } else if (data) {
-            setEmpresaId(data.empresa_id);
+          if (data) {
+            const updatedUser: CustomUser = {
+              ...supabaseUser,
+              role: data.role,
+              empresa_id: data.empresa_id,
+              name: data.name,
+              phone: data.phone,
+              address: {
+                cep: data.cep,
+                street: data.street,
+                number: data.number,
+                complement: data.complement,
+                neighborhood: data.neighborhood,
+                city: data.city,
+                state: data.state,
+              }
+            };
+            setCurrentUser(updatedUser);
+            setUserRole(data.role);
+          } else {
+            setCurrentUser(supabaseUser as CustomUser);
+            setUserRole(null);
+            console.warn("AuthContext: Dados de perfil não encontrados para o usuário:", supabaseUser.id, error?.message);
           }
         } else {
-          setEmpresaId(null);
+          setCurrentUser(null);
+          setUserRole(null);
         }
-
         setLoading(false);
       }
     );
@@ -94,24 +211,85 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     };
   }, []);
 
+  const signUp = async (email: string, password: string, name?: string, phone?: string) => {
+    try {
+      setLoading(true);
+      const result = await authService.signUp(email, password);
+      toast({ title: "Conta criada com sucesso", description: "Bem-vindo!" });
+      return result;
+    } catch (error: any) {
+      toast({ title: "Erro ao criar conta", description: error.message, variant: "destructive" });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const result = await authService.signIn(email, password);
+      return result;
+    } catch (error: any) {
+      console.error("AuthContext: Erro capturado no signIn:", error.message);
+      toast({ title: "Erro ao fazer login", description: error.message, variant: "destructive" });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logOut = async () => {
+    try {
+      setLoading(true);
+      await authService.logOut();
+      toast({ title: "Logout realizado", description: "Você foi desconectado." });
+    } catch (error: any) {
+      toast({ title: "Erro ao fazer logout", description: error.message, variant: "destructive" });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
-    user,
-    session,
-    empresaId,
+    currentUser,
+    userRole,
     loading,
-    signIn: supabase.auth.signInWithPassword,
-    signOut: supabase.auth.signOut,
-    signUp: supabase.auth.signUp,
+    signUp,
+    signIn,
+    logOut,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
 
-// Cart Provider
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+
+// Cart Context & Provider
+interface CartContextType {
+  cart: any[];
+  itemCount: number;
+  totalPrice: number;
+  isCartOpen: boolean;
+  setIsCartOpen: (isOpen: boolean) => void;
+  addItem: (item: any) => void;
+  removeItem: (itemId: string) => void;
+  clearCart: () => void;
+}
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
 const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -136,15 +314,6 @@ const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
-// Hooks
-const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
-  }
-  return context;
-};
-
 const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
@@ -153,7 +322,7 @@ const useCart = () => {
   return context;
 };
 
-// Pages
+// Páginas (componentes de placeholder)
 const Index = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -170,7 +339,6 @@ const Index = () => {
         return;
       }
       setIsLoading(true);
-
       try {
         const { data: empresa, error: empresaError } = await supabase
           .from('empresas')
@@ -183,7 +351,7 @@ const Index = () => {
           setIsLoading(false);
           return;
         }
-        setEmpresaData(empresa);
+        setEmpresaData(empresa as any);
         const empresaId = empresa.id;
 
         const { data: categoriesData, error: categoriesError } = await supabase
@@ -200,7 +368,7 @@ const Index = () => {
           order: cat.display_order
         }));
         const categoriesWithAll = [{ id: "all", name: "Todos", order: 0 }, ...formattedCategories];
-        setCategories(categoriesWithAll);
+        setCategories(categoriesWithAll as any);
 
         const { data: menuItemsData, error: itemsError } = await supabase
           .from('menu_items')
@@ -374,7 +542,7 @@ const Index = () => {
   );
 };
 
-// Placeholder Pages
+// Páginas (componentes de placeholder)
 const Login = () => <div>Login Page</div>;
 const Register = () => <div>Register Page</div>;
 const Admin = () => <div>Admin Page</div>;
@@ -394,18 +562,18 @@ const ResetPassword = () => <div>Reset Password Page</div>;
 
 // Componente PrivateRoute adaptado para usar o user do useAuth
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
-  const { user, loading } = useAuth();
+  const { currentUser, loading } = useAuth();
 
   if (loading) {
     return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
   }
 
-  if (!user) {
+  if (!currentUser) {
     console.log("PrivateRoute: Usuário não autenticado, redirecionando para /login");
     return <Navigate to="/login" />;
   }
 
-  const userRole = user?.user_metadata?.role;
+  const userRole = currentUser.role;
 
   if (userRole === "admin") {
     console.log(`PrivateRoute: Usuário é admin. Acesso permitido a todas as páginas.`);
