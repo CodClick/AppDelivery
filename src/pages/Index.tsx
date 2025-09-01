@@ -10,7 +10,7 @@ import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useParams } from 'react-router-dom';
 import { Skeleton } from "@/components/ui/skeleton";
-import AppLayout from "@/layouts/AppLayout"; // Adicione esta linha
+import AppLayout from "@/components/layouts/AppLayout"; // Adicione esta linha
 
 // Componente principal da página de cardápio
 const Index = () => {
