@@ -64,6 +64,9 @@ const App = () => (
               <Route path="/unauthorized" element={<NotFound />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
+              {/* ROTA PADRÃO NA RAIZ (SEM SLUG) */}
+              <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+
               {/* ROTAS COM SLUG ANINHADAS */}
               <Route path="/:slug" element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
                 <Route index element={<Index />} />
@@ -80,9 +83,6 @@ const App = () => (
                   <Route path="api/*" element={<Api />} />
                 </Route>
               </Route>
-
-              {/* ROTA PADRÃO NA RAIZ (SEM SLUG) */}
-              <Route path="/" element={<AppLayout><Index /></AppLayout>} />
 
               {/* ROTA 404 - A ÚLTIMA A SER VERIFICADA */}
               <Route path="*" element={<NotFound />} />
