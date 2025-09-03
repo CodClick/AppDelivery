@@ -46,25 +46,47 @@ const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: st
   return <>{children}</>;
 };
 
-// Componente que agrupa as rotas que precisam do EmpresaProvider
-const EmpresaRoutes = () => {
+// Componente para rotas públicas (fora do EmpresaProvider)
+const PublicRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/admin-register" element={<AdminRegister />} />
+      <Route path="/checkout" element={<Checkout />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/unauthorized" element={<NotFound />} />
+      <Route path="/order-confirmation" element={<OrderConfirmation />} />
+      {/* Rota 404 para rotas públicas não encontradas */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
+// Componente para rotas de Empresa e Admin (dentro do EmpresaProvider)
+const CompanyAndAdminRoutes = () => {
   return (
     <EmpresaProvider>
       <AppLayout>
         <Routes>
-          {/* Rotas de exibição (com slug) */}
-          <Route path="/" element={<Index />} />
-          <Route path="/:slug" element={<Index />} />
-          {/* Rotas de Admin/usuário que dependem do EmpresaProvider */}
-          <Route path="/admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>} />
-          <Route path="/admin-dashboard" element={<PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>} />
-          <Route path="/admin-coupons" element={<PrivateRoute role="admin"><AdminCupons /></PrivateRoute>} />
-          <Route path="/admin-orders" element={<PrivateRoute role="admin"><AdminOrders /></PrivateRoute>} />
-          <Route path="/pdv" element={<PrivateRoute role="admin"><PDV /></PrivateRoute>} />
-          <Route path="/api/*" element={<PrivateRoute role="admin"><Api /></PrivateRoute>} />
-          <Route path="/orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
-          <Route path="/entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
-          {/* Rotas genéricas de erro (se necessário dentro do provedor) */}
+          {/* Rotas de exibição (cardápio) */}
+          <Route index element={<Index />} />
+          <Route path="entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
+          <Route path="orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
+
+          {/* Rotas de Admin ANINHADAS sob a rota do slug */}
+          <Route path="admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="coupons" element={<AdminCupons />} />
+            <Route path="pdv" element={<PDV />} />
+            <Route path="api/*" element={<Api />} />
+            {/* Redirecionamento padrão para /admin */}
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
+          
+          {/* Rota de fallback para a empresa, se não for encontrada */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
@@ -79,18 +101,10 @@ const App = () => (
         <AuthProvider>
           <CartProvider>
             <Routes>
-              {/* Rotas públicas que não precisam do EmpresaProvider */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/admin-register" element={<AdminRegister />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/unauthorized" element={<NotFound />} />
-              <Route path="/order-confirmation" element={<OrderConfirmation />} />
-
-              {/* Rota para as páginas que precisam do EmpresaProvider */}
-              <Route path="/*" element={<EmpresaRoutes />} />
+              {/* Rotas públicas na URL raiz */}
+              <Route path="/*" element={<PublicRoutes />} />
+              {/* Rotas com slug da empresa */}
+              <Route path="/:slug/*" element={<CompanyAndAdminRoutes />} />
             </Routes>
             <ShoppingCart />
             <Toaster />
