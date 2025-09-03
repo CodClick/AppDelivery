@@ -53,40 +53,38 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
-            <EmpresaProvider>
-              <Routes>
-                {/* Rotas Públicas (NÃO ENVOLVIDAS POR LAYOUT, POIS NÃO DEPENDEM DO CONTEXTO) */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/admin-register" element={<AdminRegister />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/unauthorized" element={<NotFound />} />
-                <Route path="/order-confirmation" element={<OrderConfirmation />} />
+            <Routes>
+              {/* Rotas Públicas (NÃO ENVOLVIDAS POR PROVIDER DE EMPRESA) */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/admin-register" element={<AdminRegister />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/unauthorized" element={<NotFound />} />
+              <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-                {/* Rotas de Empresa/Admin (ENVOLVIDAS POR LAYOUT E PROVIDER) */}
-                <Route element={<AppLayout />}>
-                    <Route index element={<Index />} /> {/* Rota para o cardápio raiz */}
-                    <Route path="/:slug" element={<Index />} /> {/* Rota do cardápio com slug */}
-                    <Route path="/orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
-                    <Route path="/entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
+              {/* Rota para o cardápio padrão na URL raiz (sem slug) */}
+              <Route path="/" element={<EmpresaProvider><AppLayout><Index /></AppLayout></EmpresaProvider>} />
 
-                    {/* Rotas de Admin ANINHADAS sob a rota do slug, para manter a hierarquia */}
-                    <Route path="/:slug/admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>}>
-                        <Route path="dashboard" element={<AdminDashboard />} />
-                        <Route path="orders" element={<AdminOrders />} />
-                        <Route path="coupons" element={<AdminCupons />} />
-                        <Route path="pdv" element={<PDV />} />
-                        <Route path="api/*" element={<Api />} />
-                        <Route index element={<Navigate to="dashboard" replace />} />
-                    </Route>
-                </Route>
+              {/* Rotas de Empresa e Admin (ENVOLVIDAS POR PROVIDER) */}
+              <Route path="/:slug" element={<EmpresaProvider><AppLayout><Index /></AppLayout></EmpresaProvider>} />
+              <Route path="/:slug/orders" element={<EmpresaProvider><AppLayout><PrivateRoute><Orders /></PrivateRoute></AppLayout></EmpresaProvider>} />
+              <Route path="/:slug/entregador" element={<EmpresaProvider><AppLayout><PrivateRoute role="entregador"><Entregador /></PrivateRoute></AppLayout></EmpresaProvider>} />
 
-                {/* Rota 404 - A ÚLTIMA A SER VERIFICADA */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </EmpresaProvider>
+              {/* Rotas de Admin */}
+              <Route path="/:slug/admin" element={<EmpresaProvider><AppLayout><PrivateRoute role="admin"><Admin /></PrivateRoute></AppLayout>}>
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="orders" element={<AdminOrders />} />
+                  <Route path="coupons" element={<AdminCupons />} />
+                  <Route path="pdv" element={<PDV />} />
+                  <Route path="api/*" element={<Api />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+              </Route>
+              
+              {/* Rota 404 - A ÚLTIMA A SER VERIFICADA */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
             <ShoppingCart />
             <Toaster />
             <Sonner />
