@@ -1,161 +1,67 @@
-// src/contexts/AuthContext.tsx
-import React, { createContext, useEffect, useState } from "react";
-import { useAuthState } from "@/hooks/useAuthState";
-import {
-  signUp as authSignUp,
-  signIn as authSignIn,
-  logOut as authLogOut,
-} from "@/services/authService";
-import { useToast } from "@/hooks/use-toast";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient";
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
-interface UserAddress {
-  cep?: string;
-  street?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-}
+const AuthContext = createContext(null);
 
-interface CustomUser extends User {
-  role?: string;
-  empresa_id?: string;
-  name?: string;
-  phone?: string;
-  address?: UserAddress;
-}
-
-interface AuthContextType {
-  currentUser: CustomUser | null;
-  userRole: string | null;
-  loading: boolean;
-  signUp: (
-    email: string,
-    password: string,
-    name?: string,
-    phone?: string
-  ) => Promise<any>;
-  signIn: (email: string, password: string) => Promise<any>;
-  logOut: () => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser: supabaseUser, loading: authStateLoading } = useAuthState();
-  const [currentUser, setCurrentUser] = useState<CustomUser | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchAndSetUser = async () => {
-      setLoading(true);
-
-      if (supabaseUser) {
-        const { data, error } = await supabase
-          .from("usuarios")
-          .select("role, empresa_id, name, phone, cep, street, number, complement, neighborhood, city, state")
-          .eq("id", supabaseUser.id)
-          .single();
-
-        if (data) {
-          const updatedUser: CustomUser = {
-            ...supabaseUser,
-            role: data.role,
-            empresa_id: data.empresa_id,
-            name: data.name,
-            phone: data.phone,
-            address: {
-                cep: data.cep,
-                street: data.street,
-                number: data.number,
-                complement: data.complement,
-                neighborhood: data.neighborhood,
-                city: data.city,
-                state: data.state,
-            }
-          };
-          setCurrentUser(updatedUser);
-          setUserRole(data.role);
-          console.log("AuthContext: Usuário carregado com todos os dados de perfil.", updatedUser);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          // 1. Busca o perfil completo do usuário da tabela 'usuarios'
+          const { data: userData, error } = await supabase
+            .from('usuarios')
+            .select('id, nome, role, empresa_id')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error('Erro ao buscar perfil do usuário:', error.message);
+            setCurrentUser({ ...session.user, role: 'cliente', empresa_id: null });
+          } else {
+            // 2. Cria um objeto de usuário completo com as informações do authUser e da tabela 'usuarios'
+            setCurrentUser({ ...session.user, ...userData });
+          }
         } else {
-          setCurrentUser(supabaseUser as CustomUser);
-          setUserRole(null);
-          console.warn("AuthContext: Dados de perfil não encontrados para o usuário:", supabaseUser.id, error?.message);
+          setCurrentUser(null);
         }
-      } else {
-        setCurrentUser(null);
-        setUserRole(null);
+        setLoading(false);
       }
-      setLoading(false);
+    );
+
+    return () => {
+      authListener?.unsubscribe();
     };
+  }, []);
 
-    if (!authStateLoading) {
-      fetchAndSetUser();
-    }
-  }, [supabaseUser, authStateLoading]);
-
-  const signUp = async (email: string, password: string, name?: string, phone?: string) => {
-    try {
-      setLoading(true);
-      const result = await authSignUp(email, password, name, phone);
-      toast({ title: "Conta criada com sucesso", description: "Bem-vindo ao nosso aplicativo!" });
-      return result;
-    } catch (error: any) {
-      toast({ title: "Erro ao criar conta", description: error.message, variant: "destructive" });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      const result = await authSignIn(email, password);
-      return result;
-    } catch (error: any) {
-      console.error("AuthContext: Erro capturado no signIn:", error.message);
-      toast({
-        title: "Erro ao fazer login",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+  const signIn = async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   };
 
   const logOut = async () => {
-    try {
-      setLoading(true);
-      await authLogOut();
-      toast({ title: "Logout realizado", description: "Você foi desconectado com sucesso." });
-    } catch (error: any) {
-      toast({ title: "Erro ao fazer logout", description: error.message, variant: "destructive" });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Erro ao fazer logout:', error.message);
+    navigate('/login');
   };
 
   const value = {
     currentUser,
-    userRole,
     loading,
-    signUp,
     signIn,
-    logOut,
+    logOut
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);
