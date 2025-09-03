@@ -1,4 +1,3 @@
-// src/App.tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
@@ -54,7 +53,7 @@ const App = () => (
         <AuthProvider>
           <CartProvider>
             <Routes>
-              {/* ROTAS PÚBLICAS GLOBAIS */}
+              {/* ROTAS PÚBLICAS GLOBAIS - PRIORIDADE MÁXIMA */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/admin-register" element={<AdminRegister />} />
@@ -64,22 +63,20 @@ const App = () => (
               <Route path="/unauthorized" element={<NotFound />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-              {/* ROTAS DO CARDÁPIO E ADMIN COM LAYOUT E CONTEXTO */}
-              <Route element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
-                <Route path="/" element={<Index />} />
-                <Route path="/:slug" element={<Index />} />
-                <Route path="/:slug/orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
-                <Route path="/:slug/entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
-                <Route path="/:slug/admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>}>
-                    <Route index element={<Navigate to="dashboard" replace />} />
-                    <Route path="dashboard" element={<AdminDashboard />} />
-                    <Route path="orders" element={<AdminOrders />} />
-                    <Route path="coupons" element={<AdminCupons />} />
-                    <Route path="pdv" element={<PDV />} />
-                    <Route path="api/*" element={<Api />} />
-                </Route>
+              {/* ROTA DE REDIRECIONAMENTO PARA LOGIN COM SLUG */}
+              <Route path="/:slug/login" element={<Navigate to="/login" replace />} />
+              
+              {/* ROTAS DO CARDÁPIO E ADMIN COM LAYOUT E CONTEXTO - ANINHADAS DENTRO DE UM ÚNICO PAI */}
+              <Route path="/:slug" element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
+                <Route index element={<Index />} />
+                <Route path="orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
+                <Route path="entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
+                <Route path="admin/*" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>} />
               </Route>
               
+              {/* ROTA PADRÃO NA RAIZ (SEM SLUG) */}
+              <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+
               {/* ROTA 404 - A ÚLTIMA A SER VERIFICADA */}
               <Route path="*" element={<NotFound />} />
             </Routes>
