@@ -63,6 +63,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/unauthorized" element={<NotFound />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
+              <Route path="/:slug/login" element={<Navigate to="/login" replace />} />
 
               {/* ROTA PADRÃO NA RAIZ (SEM SLUG) */}
               <Route path="/" element={<AppLayout><Index /></AppLayout>} />
