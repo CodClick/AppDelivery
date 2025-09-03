@@ -142,44 +142,5 @@ const Login = () => {
     </div>
   );
 };
-autoComplete="current-password"
-                  required
-                  className="pl-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link to="/forgot-password" className="font-medium text-brand hover:text-brand-600">
-                Esqueceu sua senha?
-              </Link>
-            </div>
-          </div>
-          
-          <Button
-            type="submit"
-            className="w-full bg-brand hover:bg-brand-600"
-            disabled={loading}
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </Button>
-        </form>
-        <div className="text-center mt-4">
-          <span className="text-sm text-gray-600">É dono de restaurante?</span>
-          <br />
-          <Link to="/admin-register" className="text-brand hover:underline font-medium">
-            Cadastre seu restaurante
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default Login;
       
