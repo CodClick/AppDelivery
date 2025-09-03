@@ -1,8 +1,7 @@
 // src/App.tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext.tsx"; // Importa o provedor
-import { useAuth } from "./hooks/useAuth.tsx"; // Importa o hook
+import { AuthProvider, useAuth } from "./contexts/AuthContext.tsx";
 import { CartProvider } from "@/contexts/CartContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
@@ -47,66 +46,46 @@ const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: st
   return <>{children}</>;
 };
 
-// Componente para rotas públicas (fora do EmpresaProvider)
-const PublicRoutes = () => {
-  return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/admin-register" element={<AdminRegister />} />
-      <Route path="/checkout" element={<Checkout />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/unauthorized" element={<NotFound />} />
-      <Route path="/order-confirmation" element={<OrderConfirmation />} />
-      {/* Rota 404 para rotas públicas não encontradas */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-};
-
-// Componente para rotas de Empresa e Admin (dentro do EmpresaProvider)
-const CompanyAndAdminRoutes = () => {
-  return (
-    <EmpresaProvider>
-      <AppLayout>
-        <Routes>
-          {/* Rotas de exibição (cardápio) */}
-          <Route index element={<Index />} />
-          <Route path="entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
-          <Route path="orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
-
-          {/* Rotas de Admin ANINHADAS sob a rota do slug */}
-          <Route path="admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>}>
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="orders" element={<AdminOrders />} />
-            <Route path="coupons" element={<AdminCupons />} />
-            <Route path="pdv" element={<PDV />} />
-            <Route path="api/*" element={<Api />} />
-            {/* Redirecionamento padrão para /admin */}
-            <Route index element={<Navigate to="dashboard" replace />} />
-          </Route>
-          
-          {/* Rota de fallback para a empresa, se não for encontrada */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </AppLayout>
-    </EmpresaProvider>
-  );
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
-            <Routes>
-              {/* Rotas públicas na URL raiz */}
-              <Route path="/*" element={<PublicRoutes />} />
-              {/* Rotas com slug da empresa */}
-              <Route path="/:slug/*" element={<CompanyAndAdminRoutes />} />
-            </Routes>
+            <EmpresaProvider>
+              <Routes>
+                {/* Rotas Públicas (NÃO ENVOLVIDAS POR LAYOUT, POIS NÃO DEPENDEM DO CONTEXTO) */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/admin-register" element={<AdminRegister />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/unauthorized" element={<NotFound />} />
+                <Route path="/order-confirmation" element={<OrderConfirmation />} />
+
+                {/* Rotas de Empresa/Admin (ENVOLVIDAS POR LAYOUT E PROVIDER) */}
+                <Route element={<AppLayout />}>
+                    <Route index element={<Index />} /> {/* Rota para o cardápio raiz */}
+                    <Route path="/:slug" element={<Index />} /> {/* Rota do cardápio com slug */}
+                    <Route path="/orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
+                    <Route path="/entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
+
+                    {/* Rotas de Admin ANINHADAS sob a rota do slug, para manter a hierarquia */}
+                    <Route path="/:slug/admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>}>
+                        <Route path="dashboard" element={<AdminDashboard />} />
+                        <Route path="orders" element={<AdminOrders />} />
+                        <Route path="coupons" element={<AdminCupons />} />
+                        <Route path="pdv" element={<PDV />} />
+                        <Route path="api/*" element={<Api />} />
+                        <Route index element={<Navigate to="dashboard" replace />} />
+                    </Route>
+                </Route>
+
+                {/* Rota 404 - A ÚLTIMA A SER VERIFICADA */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </EmpresaProvider>
             <ShoppingCart />
             <Toaster />
             <Sonner />
