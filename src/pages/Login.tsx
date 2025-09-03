@@ -1,7 +1,6 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +12,27 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, currentUser } = useAuth(); // Adicione currentUser aqui
   const navigate = useNavigate();
+  const location = useLocation(); // Adicione useLocation aqui
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Este useEffect só será executado quando o 'currentUser' mudar
+    if (currentUser) {
+      // Pega o slug da URL, se existir
+      const params = new URLSearchParams(location.search);
+      const redirectSlug = params.get('redirectSlug');
+
+      if (redirectSlug) {
+        // Redireciona para a página da empresa com o slug
+        navigate(`/${redirectSlug}`, { replace: true });
+      } else {
+        // Redirecionamento padrão para a área de admin, se não houver slug
+        navigate("/admin", { replace: true });
+      }
+    }
+  }, [currentUser, navigate, location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +45,7 @@ const Login = () => {
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
       });
-      navigate("/");
+      // O redirecionamento agora é feito pelo useEffect, então não precisamos de 'navigate' aqui.
     } catch (error) {
       setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
@@ -115,13 +132,12 @@ const Login = () => {
           </Button>
         </form>
         <div className="text-center mt-4">
-  <span className="text-sm text-gray-600">É dono de restaurante?</span>
-  <br />
-  <Link to="/admin-register" className="text-brand hover:underline font-medium">
-    Cadastre seu restaurante
-  </Link>
-</div>
-
+          <span className="text-sm text-gray-600">É dono de restaurante?</span>
+          <br />
+          <Link to="/admin-register" className="text-brand hover:underline font-medium">
+            Cadastre seu restaurante
+          </Link>
+        </div>
       </div>
     </div>
   );
