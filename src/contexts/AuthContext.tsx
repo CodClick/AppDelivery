@@ -1,5 +1,4 @@
 // src/contexts/AuthContext.tsx
-import { useContext } from "react";
 import React, { createContext, useEffect, useState } from "react";
 import { useAuthState } from "@/hooks/useAuthState";
 import {
@@ -24,9 +23,9 @@ interface UserAddress {
 interface CustomUser extends User {
   role?: string;
   empresa_id?: string;
-  name?: string; // Adicionado: Nome do usuário
-  phone?: string; // Adicionado: Telefone do usuário
-  address?: UserAddress; // Adicionado: Objeto de endereço
+  name?: string;
+  phone?: string;
+  address?: UserAddress;
 }
 
 interface AuthContextType {
@@ -50,29 +49,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<CustomUser | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchAndSetUser = async () => {
       setLoading(true);
 
       if (supabaseUser) {
-        // --- MODIFICAÇÃO CRÍTICA AQUI ---
-        // A query agora busca todas as informações de perfil necessárias para o autofill.
         const { data, error } = await supabase
           .from("usuarios")
           .select("role, empresa_id, name, phone, cep, street, number, complement, neighborhood, city, state")
           .eq("id", supabaseUser.id)
           .single();
-        // --- FIM DA MODIFICAÇÃO ---
 
         if (data) {
           const updatedUser: CustomUser = {
             ...supabaseUser,
             role: data.role,
             empresa_id: data.empresa_id,
-            name: data.name, // Popula o nome
-            phone: data.phone, // Popula o telefone
-            // Cria um objeto de endereço a partir dos dados do perfil
+            name: data.name,
+            phone: data.phone,
             address: {
                 cep: data.cep,
                 street: data.street,
@@ -103,7 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [supabaseUser, authStateLoading]);
 
-  // Funções de Autenticação (não precisam de alteração)
   const signUp = async (email: string, password: string, name?: string, phone?: string) => {
     try {
       setLoading(true);
@@ -163,12 +158,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 };
