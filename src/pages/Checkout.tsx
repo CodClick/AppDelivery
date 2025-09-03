@@ -12,7 +12,7 @@ import { createOrder } from "@/services/orderService";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { fetchAddressByCep } from "@/services/cepService";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 const Checkout = () => {
   const {
