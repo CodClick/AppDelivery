@@ -11,10 +11,7 @@ import OrderConfirmation from "./pages/OrderConfirmation";
 import AdminRegister from "./pages/AdminRegister";
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import AppRoutes from './AppRoutes'; // Importe o novo componente de rotas
-import ShoppingCart from "./components/ShoppingCart";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import AppRoutes from './AppRoutes';
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const queryClient = new QueryClient();
@@ -38,9 +35,6 @@ const App = () => (
             </Routes>
             <Checkout />
             <OrderConfirmation />
-            <ShoppingCart />
-            <Toaster />
-            <Sonner />
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
