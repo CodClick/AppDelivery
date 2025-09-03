@@ -1,3 +1,4 @@
+// src/App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,8 +25,6 @@ import AdminCupons from "@/pages/AdminCupons";
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
-
-// Importe a nova página de confirmação de pedido
 import OrderConfirmation from "./pages/OrderConfirmation";
 
 const queryClient = new QueryClient();
@@ -68,7 +67,7 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/unauthorized" element={<NotFound />} />
                 
-                {/* ** NOVA ROTA DE CONFIRMAÇÃO ** */}
+                {/* ** ROTAS MAIS ESPECÍFICAS DEVEM VIR ANTES ** */}
                 <Route path="/order-confirmation" element={<AppLayout><OrderConfirmation /></AppLayout>} />
 
                 {/* Rotas de Admin (protegidas) */}
@@ -155,7 +154,7 @@ const App = () => (
                   }
                 />
                 
-                {/* Rotas de exibição */}
+                {/* A ROTA GENÉRICA `/:slug` DEVE SER A ÚLTIMA A SER VERIFICADA */}
                 <Route
                   path="/"
                   element={
