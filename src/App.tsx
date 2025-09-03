@@ -54,7 +54,7 @@ const App = () => (
         <AuthProvider>
           <CartProvider>
             <Routes>
-              {/* Rotas Públicas */}
+              {/* ROTAS PÚBLICAS FIXAS PRIMEIRO */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/admin-register" element={<AdminRegister />} />
@@ -64,74 +64,27 @@ const App = () => (
               <Route path="/unauthorized" element={<NotFound />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-              {/* Rotas de Empresa/Admin (envolvidas pelo provedor) */}
-              <Route 
-                path="/" 
-                element={
-                  <EmpresaProvider>
-                    <AppLayout>
-                      <Index />
-                    </AppLayout>
-                  </EmpresaProvider>
-                }
-              />
-              <Route 
-                path="/:slug" 
-                element={
-                  <EmpresaProvider>
-                    <AppLayout>
-                      <Index />
-                    </AppLayout>
-                  </EmpresaProvider>
-                }
-              />
-              <Route 
-                path="/:slug/orders" 
-                element={
-                  <EmpresaProvider>
-                    <AppLayout>
-                      <PrivateRoute>
-                        <Orders />
-                      </PrivateRoute>
-                    </AppLayout>
-                  </EmpresaProvider>
-                }
-              />
-              <Route 
-                path="/:slug/entregador" 
-                element={
-                  <EmpresaProvider>
-                    <AppLayout>
-                      <PrivateRoute role="entregador">
-                        <Entregador />
-                      </PrivateRoute>
-                    </AppLayout>
-                  </EmpresaProvider>
-                }
-              />
+              {/* ROTAS COM SLUG ANINHADAS */}
+              <Route path="/:slug" element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
+                <Route index element={<Index />} />
+                <Route path="orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
+                <Route path="entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
 
-              {/* Rotas de Admin aninhadas */}
-              <Route 
-                path="/:slug/admin" 
-                element={
-                  <EmpresaProvider>
-                    <AppLayout>
-                      <PrivateRoute role="admin">
-                        <Admin />
-                      </PrivateRoute>
-                    </AppLayout>
-                  </EmpresaProvider>
-                }
-              >
+                {/* ROTAS DE ADMIN */}
+                <Route path="admin" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>}>
+                  <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="orders" element={<AdminOrders />} />
                   <Route path="coupons" element={<AdminCupons />} />
                   <Route path="pdv" element={<PDV />} />
                   <Route path="api/*" element={<Api />} />
-                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Route>
               </Route>
-              
-              {/* Rota 404 */}
+
+              {/* ROTA PADRÃO NA RAIZ (SEM SLUG) */}
+              <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+
+              {/* ROTA 404 - A ÚLTIMA A SER VERIFICADA */}
               <Route path="*" element={<NotFound />} />
             </Routes>
             <ShoppingCart />
