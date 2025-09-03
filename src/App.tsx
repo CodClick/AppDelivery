@@ -1,7 +1,8 @@
 // src/App.tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext.tsx";
+import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { useAuth } from "./hooks/useAuth.tsx";
 import { CartProvider } from "@/contexts/CartContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
