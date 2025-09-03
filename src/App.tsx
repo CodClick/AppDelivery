@@ -1,6 +1,51 @@
-// src/App.tsx
-// Adicione o hook useParams
-import { useParams, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { useAuth } from "./hooks/useAuth.tsx";
+import { CartProvider } from "@/contexts/CartContext";
+import { EmpresaProvider } from "@/contexts/EmpresaContext";
+
+// Importações de páginas e componentes
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Admin from "./pages/Admin";
+import AdminDashboard from "./pages/AdminDashboard";
+import Orders from "./pages/Orders";
+import AdminOrders from "./pages/AdminOrders";
+import Entregador from "./pages/Entregador";
+import PDV from "./pages/PDV";
+import Api from "./pages/Api";
+import NotFound from "./pages/NotFound";
+import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import AdminRegister from "./pages/AdminRegister";
+import AdminCupons from "@/pages/AdminCupons";
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import AppLayout from "@/components/layouts/AppLayout";
+import ShoppingCart from "./components/ShoppingCart";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+const queryClient = new QueryClient();
+
+// Rota privada para verificar autenticação
+const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
+  const { currentUser, loading } = useAuth();
+  if (loading) {
+    return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
+  }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (role && currentUser.role !== role) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -19,10 +64,7 @@ const App = () => (
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
               {/* ROTA DE REDIRECIONAMENTO PARA LOGIN COM SLUG */}
-              <Route
-                path="/:slug/login"
-                element={<LoginRedirector />} // Use um novo componente auxiliar
-              />
+              <Route path="/:slug/login" element={<Navigate to="/login" replace />} />
               
               {/* ROTAS DO CARDÁPIO E ADMIN COM LAYOUT E CONTEXTO - ANINHADAS DENTRO DE UM ÚNICO PAI */}
               <Route path="/:slug" element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
@@ -47,11 +89,5 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
-
-// Novo componente para lidar com o redirecionamento com slug
-const LoginRedirector = () => {
-    const { slug } = useParams();
-    return <Navigate to={`/login?redirectSlug=${slug}`} replace />;
-};
 
 export default App;
