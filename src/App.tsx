@@ -1,8 +1,6 @@
 // src/App.tsx
-...
 // Adicione o hook useParams
 import { useParams, Navigate } from "react-router-dom";
-...
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
