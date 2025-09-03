@@ -142,8 +142,6 @@ const Login = () => {
     </div>
   );
 };
-
-export default Login;
 autoComplete="current-password"
                   required
                   className="pl-10"
