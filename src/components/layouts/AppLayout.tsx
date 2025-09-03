@@ -1,6 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Link, Outlet } from "react-router-dom"; // Importe o Outlet
+import { Link, Outlet } from "react-router-dom";
+import ShoppingCart from "@/components/ShoppingCart";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 
 const AppLayout = () => {
   const { currentUser, logOut } = useAuth();
@@ -18,7 +21,11 @@ const AppLayout = () => {
           </Button>
         )}
       </div>
-      <Outlet /> {/* <-- O COMPONENTE CHAVE ESTÁ AQUI */}
+      <Outlet />
+      {/* Mova os componentes globais para o layout */}
+      <ShoppingCart />
+      <Toaster />
+      <Sonner />
     </div>
   );
 };
