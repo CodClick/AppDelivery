@@ -26,7 +26,7 @@ const Checkout = () => {
 
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { currentUser } = useAuth(); // Usando o hook useAuth para obter o currentUser logado
+  const { currentUser } = useAuth();
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -42,13 +42,11 @@ const Checkout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
 
-  // --- NOVO CÓDIGO PARA AUTOFILL ---
-  // Este useEffect será executado quando o componente for montado ou quando o currentUser mudar
   useEffect(() => {
     if (currentUser) {
-      setCustomerName(currentUser.name || ""); // 'name' é um exemplo, ajuste para o nome da sua prop
-      setCustomerPhone(currentUser.phone || ""); // 'phone' é um exemplo
-      setCep(currentUser.address?.zipCode || ""); // Supondo que o endereço está em um objeto aninhado
+      setCustomerName(currentUser.name || "");
+      setCustomerPhone(currentUser.phone || "");
+      setCep(currentUser.address?.zipCode || "");
       setStreet(currentUser.address?.street || "");
       setNumber(currentUser.address?.number || "");
       setComplement(currentUser.address?.complement || "");
@@ -57,11 +55,9 @@ const Checkout = () => {
       setState(currentUser.address?.state || "");
     }
   }, [currentUser]);
-  // --- FIM DO NOVO CÓDIGO ---
 
   const handleCepChange = async (value: string) => {
     setCep(value);
-
     if (value.replace(/\D/g, '').length === 8) {
       setCepLoading(true);
       try {
@@ -103,9 +99,6 @@ const Checkout = () => {
     const empresaIdDoUsuarioLogado = currentUser.empresa_id; 
 
     try {
-      console.log("=== CHECKOUT SUBMIT ===");
-      console.log("Itens do carrinho:", cartItems);
-
       const orderData = {
         customerName,
         customerPhone,
@@ -137,15 +130,16 @@ const Checkout = () => {
         paymentStatus: "a_receber",
       };
 
-      console.log("[CHECKOUT] Dados do pedido sendo enviados:", JSON.stringify(orderData, null, 2));
-
       const order = await createOrder(orderData);
+      
+      // Limpa o carrinho e redireciona para a página de confirmação
       clearCart();
-      toast({
-        title: "Pedido realizado com sucesso!",
-        description: `Seu pedido #${order.id.substring(0, 6)} foi enviado para o restaurante.`,
+      
+      // Novo redirecionamento para a página de confirmação
+      navigate("/order-confirmation", {
+        state: { order: order, empresaSlug: empresaIdDoUsuarioLogado },
       });
-      navigate("/");
+
     } catch (error) {
       console.error("Erro ao criar pedido:", error);
       toast({
@@ -173,10 +167,10 @@ const Checkout = () => {
     );
   }
 
+  // Restante do componente de renderização...
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Finalizar Pedido</h1>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
@@ -184,6 +178,7 @@ const Checkout = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* ... seus inputs de formulário ... */}
               <div>
                 <Label htmlFor="customerName">Nome completo</Label>
                 <Input
@@ -423,7 +418,6 @@ const Checkout = () => {
                 <span>Total a Pagar:</span>
                 <span>R$ {finalTotal.toFixed(2)}</span>
               </div>
-
             </div>
           </CardContent>
         </Card>
