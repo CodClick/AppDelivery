@@ -54,7 +54,7 @@ const App = () => (
         <AuthProvider>
           <CartProvider>
             <Routes>
-              {/* Rotas Públicas (NÃO ENVOLVIDAS POR PROVIDER DE EMPRESA) */}
+              {/* Rotas Públicas */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/admin-register" element={<AdminRegister />} />
@@ -64,16 +64,65 @@ const App = () => (
               <Route path="/unauthorized" element={<NotFound />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-              {/* Rota para o cardápio padrão na URL raiz (sem slug) */}
-              <Route path="/" element={<EmpresaProvider><AppLayout><Index /></AppLayout></EmpresaProvider>} />
+              {/* Rotas de Empresa/Admin (envolvidas pelo provedor) */}
+              <Route 
+                path="/" 
+                element={
+                  <EmpresaProvider>
+                    <AppLayout>
+                      <Index />
+                    </AppLayout>
+                  </EmpresaProvider>
+                }
+              />
+              <Route 
+                path="/:slug" 
+                element={
+                  <EmpresaProvider>
+                    <AppLayout>
+                      <Index />
+                    </AppLayout>
+                  </EmpresaProvider>
+                }
+              />
+              <Route 
+                path="/:slug/orders" 
+                element={
+                  <EmpresaProvider>
+                    <AppLayout>
+                      <PrivateRoute>
+                        <Orders />
+                      </PrivateRoute>
+                    </AppLayout>
+                  </EmpresaProvider>
+                }
+              />
+              <Route 
+                path="/:slug/entregador" 
+                element={
+                  <EmpresaProvider>
+                    <AppLayout>
+                      <PrivateRoute role="entregador">
+                        <Entregador />
+                      </PrivateRoute>
+                    </AppLayout>
+                  </EmpresaProvider>
+                }
+              />
 
-              {/* Rotas de Empresa e Admin (ENVOLVIDAS POR PROVIDER) */}
-              <Route path="/:slug" element={<EmpresaProvider><AppLayout><Index /></AppLayout></EmpresaProvider>} />
-              <Route path="/:slug/orders" element={<EmpresaProvider><AppLayout><PrivateRoute><Orders /></PrivateRoute></AppLayout></EmpresaProvider>} />
-              <Route path="/:slug/entregador" element={<EmpresaProvider><AppLayout><PrivateRoute role="entregador"><Entregador /></PrivateRoute></AppLayout></EmpresaProvider>} />
-
-              {/* Rotas de Admin */}
-              <Route path="/:slug/admin" element={<EmpresaProvider><AppLayout><PrivateRoute role="admin"><Admin /></PrivateRoute></AppLayout>}>
+              {/* Rotas de Admin aninhadas */}
+              <Route 
+                path="/:slug/admin" 
+                element={
+                  <EmpresaProvider>
+                    <AppLayout>
+                      <PrivateRoute role="admin">
+                        <Admin />
+                      </PrivateRoute>
+                    </AppLayout>
+                  </EmpresaProvider>
+                }
+              >
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="orders" element={<AdminOrders />} />
                   <Route path="coupons" element={<AdminCupons />} />
@@ -82,7 +131,7 @@ const App = () => (
                   <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
               
-              {/* Rota 404 - A ÚLTIMA A SER VERIFICADA */}
+              {/* Rota 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
             <ShoppingCart />
