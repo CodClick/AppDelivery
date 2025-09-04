@@ -1,25 +1,24 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Link, Outlet, useNavigate } from "react-router-dom"; // Importe 'useNavigate'
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import ShoppingCart from "@/components/ShoppingCart";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 
 const AppLayout = () => {
   const { currentUser, logOut } = useAuth();
-  const navigate = useNavigate(); // Inicialize o hook de navegação
+  const navigate = useNavigate();
 
-  // Função para lidar com o logout
   const handleLogout = async () => {
     await logOut();
-    navigate("/login"); // Redireciona para a página de login após o logout
+    navigate("/login", { replace: true });
   };
 
   return (
     <div>
       <div className="fixed top-4 right-4 z-50">
         {currentUser ? (
-          <Button onClick={handleLogout} variant="outline"> {/* Chame a nova função */}
+          <Button onClick={handleLogout} variant="outline">
             Sair
           </Button>
         ) : (
