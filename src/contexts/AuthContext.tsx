@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -22,9 +22,10 @@ export const AuthProvider = ({ children }) => {
           
           if (error) {
             console.error('Erro ao buscar perfil do usuário:', error.message);
+            // Cria um usuário com dados mínimos se o perfil não for encontrado
             setCurrentUser({ ...session.user, role: 'cliente', empresa_id: null });
           } else {
-            // 2. Cria um objeto de usuário completo com as informações do authUser e da tabela 'usuarios'
+            // 2. Combina os dados do authUser com os dados da tabela 'usuarios'
             setCurrentUser({ ...session.user, ...userData });
           }
         } else {
