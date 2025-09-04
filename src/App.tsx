@@ -3,19 +3,15 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { useAuth } from "./hooks/useAuth.tsx";
 import { CartProvider } from "@/contexts/CartContext";
-import { EmpresaProvider } from "@/contexts/EmpresaContext";
+import { EmpresaProvider, useEmpresa } from "@/contexts/EmpresaContext";
 
 // Importações de páginas e componentes
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Admin from "./pages/Admin";
-import AdminDashboard from "./pages/AdminDashboard";
 import Orders from "./pages/Orders";
-import AdminOrders from "./pages/AdminOrders";
 import Entregador from "./pages/Entregador";
-import PDV from "./pages/PDV";
-import Api from "./pages/Api";
 import NotFound from "./pages/NotFound";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
@@ -31,7 +27,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const queryClient = new QueryClient();
 
-// Rota privada para verificar autenticação
+// Componente para lidar com o redirecionamento com slug
+const LoginRedirector = () => {
+    const { slug } = useParams();
+    return <Navigate to={`/login?redirectSlug=${slug}`} replace />;
+};
+
+// Componente para proteger rotas com base no papel e na empresa
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
   const { currentUser, loading } = useAuth();
   const { empresa, loading: empresaLoading } = useEmpresa();
@@ -57,16 +59,11 @@ const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: st
   return <>{children}</>;
 };
 
-// Novo componente para lidar com o redirecionamento com slug
-const LoginRedirector = () => {
-    const { slug } = useParams();
-    return <Navigate to={`/login?redirectSlug=${slug}`} replace />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
+        {/* AuthProvider deve encapsular tudo para que a autenticação seja global */}
         <AuthProvider>
           <CartProvider>
             <Routes>
@@ -80,21 +77,20 @@ const App = () => (
               <Route path="/unauthorized" element={<NotFound />} />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-              {/* ROTA DE REDIRECIONAMENTO PARA LOGIN COM SLUG */}
-              <Route
-                path="/:slug/login"
-                element={<LoginRedirector />}
-              />
+              {/* ROTA AUXILIAR PARA REDIRECIONAMENTO COM SLUG */}
+              <Route path="/:slug/login" element={<LoginRedirector />} />
               
-              {/* ROTAS DO CARDÁPIO E ADMIN COM LAYOUT E CONTEXTO - ANINHADAS DENTRO DE UM ÚNICO PAI */}
+              {/* ROTAS DO CARDÁPIO COM LAYOUT E CONTEXTO DE EMPRESA */}
               <Route path="/:slug" element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
                 <Route index element={<Index />} />
                 <Route path="orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
                 <Route path="entregador" element={<PrivateRoute role="entregador"><Entregador /></PrivateRoute>} />
                 <Route path="admin/*" element={<PrivateRoute role="admin"><Admin /></PrivateRoute>} />
+                {/* Se você tiver outras rotas com slug, coloque-as aqui */}
+                <Route path="cupons" element={<PrivateRoute role="admin"><AdminCupons /></PrivateRoute>} />
               </Route>
               
-              {/* ROTA PADRÃO NA RAIZ (SEM SLUG) */}
+              {/* ROTA PADRÃO NA RAIZ (sem slug) */}
               <Route path="/" element={<AppLayout><Index /></AppLayout>} />
 
               {/* ROTA 404 - A ÚLTIMA A SER VERIFICADA */}
