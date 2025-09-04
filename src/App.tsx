@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { useAuth } from "./hooks/useAuth.tsx";
 import { CartProvider } from "@/contexts/CartContext";
@@ -34,16 +34,33 @@ const queryClient = new QueryClient();
 // Rota privada para verificar autenticação
 const PrivateRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
   const { currentUser, loading } = useAuth();
-  if (loading) {
+  const { empresa, loading: empresaLoading } = useEmpresa();
+
+  if (loading || empresaLoading) {
     return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
   }
+  
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={`/login${empresa?.slug ? `?redirectSlug=${empresa.slug}` : ''}`} replace />;
   }
+
   if (role && currentUser.role !== role) {
+    console.error(`Tentativa de acesso não autorizado: Permissão '${role}' negada para o usuário '${currentUser.role}'.`);
     return <Navigate to="/unauthorized" replace />;
   }
+
+  if (role === 'admin' && empresa && currentUser.id !== empresa.admin_id) {
+    console.error("Tentativa de acesso não autorizado: O usuário não é o admin desta empresa.");
+    return <Navigate to="/unauthorized" replace />;
+  }
+
   return <>{children}</>;
+};
+
+// Novo componente para lidar com o redirecionamento com slug
+const LoginRedirector = () => {
+    const { slug } = useParams();
+    return <Navigate to={`/login?redirectSlug=${slug}`} replace />;
 };
 
 const App = () => (
@@ -64,7 +81,10 @@ const App = () => (
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
               {/* ROTA DE REDIRECIONAMENTO PARA LOGIN COM SLUG */}
-              <Route path="/:slug/login" element={<Navigate to="/login" replace />} />
+              <Route
+                path="/:slug/login"
+                element={<LoginRedirector />}
+              />
               
               {/* ROTAS DO CARDÁPIO E ADMIN COM LAYOUT E CONTEXTO - ANINHADAS DENTRO DE UM ÚNICO PAI */}
               <Route path="/:slug" element={<EmpresaProvider><AppLayout /></EmpresaProvider>}>
