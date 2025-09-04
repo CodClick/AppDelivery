@@ -6,30 +6,43 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, Lock } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, currentUser } = useAuth(); // Adicione currentUser aqui
+  const { signIn, currentUser } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation(); // Adicione useLocation aqui
+  const location = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Este useEffect só será executado quando o 'currentUser' mudar
     if (currentUser) {
-      // Pega o slug da URL, se existir
       const params = new URLSearchParams(location.search);
       const redirectSlug = params.get('redirectSlug');
 
       if (redirectSlug) {
-        // Redireciona para a página da empresa com o slug
         navigate(`/${redirectSlug}`, { replace: true });
+      } else if (currentUser.role === 'admin' && currentUser.empresa_id) {
+        const getEmpresaSlug = async () => {
+          const { data, error } = await supabase
+            .from('empresas')
+            .select('slug')
+            .eq('id', currentUser.empresa_id)
+            .single();
+          
+          if (data) {
+            navigate(`/${data.slug}/admin`, { replace: true });
+          } else {
+            console.error('Não foi possível encontrar o slug para o admin');
+            navigate('/', { replace: true });
+          }
+        };
+        getEmpresaSlug();
       } else {
-        // Redirecionamento padrão para a área de admin, se não houver slug
-        navigate("/admin", { replace: true });
+        navigate('/', { replace: true });
       }
     }
   }, [currentUser, navigate, location.search]);
@@ -45,7 +58,7 @@ const Login = () => {
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
       });
-      // O redirecionamento agora é feito pelo useEffect, então não precisamos de 'navigate' aqui.
+      // O redirecionamento agora é feito pelo useEffect.
     } catch (error) {
       setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
@@ -142,5 +155,5 @@ const Login = () => {
     </div>
   );
 };
+
 export default Login;
-      
