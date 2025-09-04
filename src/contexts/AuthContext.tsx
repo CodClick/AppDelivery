@@ -11,17 +11,22 @@ export const AuthProvider = ({ children }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          const { data: userData, error } = await supabase
-            .from('usuarios')
-            .select('id, nome, role, empresa_id')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Erro ao buscar perfil do usuário:', error.message);
-            setCurrentUser({ ...session.user, role: 'cliente', empresa_id: null });
-          } else {
-            setCurrentUser({ ...session.user, ...userData });
+          try {
+            const { data: userData, error } = await supabase
+              .from('usuarios')
+              .select('id, nome, role, empresa_id')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (error) {
+              console.error('Erro ao buscar perfil do usuário:', error.message);
+              setCurrentUser({ ...session.user, role: 'cliente', empresa_id: null });
+            } else {
+              setCurrentUser({ ...session.user, ...userData });
+            }
+          } catch (e) {
+            console.error('Erro inesperado na busca do perfil:', e);
+            setCurrentUser(null);
           }
         } else {
           setCurrentUser(null);
