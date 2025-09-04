@@ -13,39 +13,51 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, currentUser } = useAuth();
+  const { signIn, currentUser, logOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
+    // 1. Lógica de redirecionamento para usuários já logados
     if (currentUser) {
       const params = new URLSearchParams(location.search);
       const redirectSlug = params.get('redirectSlug');
 
       if (redirectSlug) {
-        navigate(`/${redirectSlug}`, { replace: true });
-      } else if (currentUser.role === 'admin' && currentUser.empresa_id) {
-        // Verifica se o admin pertence a uma empresa e redireciona para a área de admin.
-        // A busca do slug é importante para o multitenancy.
-        const getEmpresaSlug = async () => {
-          const { data, error } = await supabase
-            .from('empresas')
-            .select('slug')
-            .eq('id', currentUser.empresa_id)
-            .single();
-          
-          if (data) {
-            navigate(`/${data.slug}/admin`, { replace: true });
-          } else {
-            console.error('Não foi possível encontrar o slug para o admin');
-            navigate('/', { replace: true });
-          }
-        };
-        getEmpresaSlug();
+        // Se a empresa_id do usuário não corresponder ao slug, nega o acesso e desloga
+        if (currentUser.empresa_id !== redirectSlug) {
+          toast({
+            title: "Acesso Negado",
+            description: "Você está logado em outra conta. Por favor, saia para acessar esta empresa.",
+            variant: "destructive"
+          });
+          logOut();
+          return;
+        }
+
+        // Se o slug corresponder, redireciona para a página do restaurante
+        if (currentUser.role === 'admin') {
+            navigate(`/${redirectSlug}/admin`, { replace: true });
+        } else {
+            navigate(`/${redirectSlug}`, { replace: true });
+        }
       } else {
-        // Redirecionamento padrão para a página inicial se não houver slug
-        navigate('/', { replace: true });
+        // Redirecionamento padrão para a área de admin, caso não haja slug
+        if (currentUser.role === 'admin' && currentUser.empresa_id) {
+          const getEmpresaSlug = async () => {
+            const { data } = await supabase
+              .from('empresas')
+              .select('slug')
+              .eq('id', currentUser.empresa_id)
+              .single();
+            if (data) navigate(`/${data.slug}/admin`, { replace: true });
+            else navigate('/', { replace: true });
+          };
+          getEmpresaSlug();
+        } else {
+          navigate('/', { replace: true });
+        }
       }
     }
   }, [currentUser, navigate, location.search]);
@@ -57,11 +69,11 @@ const Login = () => {
       setError("");
       setLoading(true);
       await signIn(email, password);
+      // O useEffect lidará com o redirecionamento após o login
       toast({
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
       });
-      // A navegação ocorre no useEffect
     } catch (e) {
       setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
