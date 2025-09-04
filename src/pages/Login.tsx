@@ -26,6 +26,8 @@ const Login = () => {
       if (redirectSlug) {
         navigate(`/${redirectSlug}`, { replace: true });
       } else if (currentUser.role === 'admin' && currentUser.empresa_id) {
+        // Verifica se o admin pertence a uma empresa e redireciona para a área de admin.
+        // A busca do slug é importante para o multitenancy.
         const getEmpresaSlug = async () => {
           const { data, error } = await supabase
             .from('empresas')
@@ -42,6 +44,7 @@ const Login = () => {
         };
         getEmpresaSlug();
       } else {
+        // Redirecionamento padrão para a página inicial se não houver slug
         navigate('/', { replace: true });
       }
     }
@@ -58,8 +61,8 @@ const Login = () => {
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
       });
-      // O redirecionamento agora é feito pelo useEffect.
-    } catch (error) {
+      // A navegação ocorre no useEffect
+    } catch (e) {
       setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
       setLoading(false);
