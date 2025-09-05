@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,17 +13,27 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, currentUser } = useAuth();
+  const { signIn, currentUser, logOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
+  // NOVO: Lê o slug diretamente dos parâmetros da rota
   const { slug } = useParams();
 
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
-  // Efeito 1: Busca os dados da empresa (logo/nome) com base no slug da URL
   useEffect(() => {
-    if (!slug) {
+    // Agora o slug é obtido diretamente de useParams()
+    let currentSlug = slug;
+
+    // Lógica para compatibilidade: se o slug não estiver na URL, tenta o parâmetro de query
+    if (!currentSlug) {
+      const params = new URLSearchParams(location.search);
+      currentSlug = params.get('redirectSlug');
+    }
+
+    if (!currentSlug) {
       setCompanyData({ logo_url: "", name: "" });
       return;
     }
@@ -32,7 +42,7 @@ const Login = () => {
       const { data, error } = await supabase
         .from('empresas')
         .select('logo_url, nome')
-        .eq('slug', slug)
+        .eq('slug', currentSlug)
         .single();
         
       if (data) {
@@ -44,53 +54,72 @@ const Login = () => {
     
     fetchCompanyData();
 
-  }, [slug]);
+  }, [slug, location.search]); // Dependência: agora depende de slug E location.search para compatibilidade.
 
-  // Efeito 2: Redireciona o usuário se ele já estiver logado
   useEffect(() => {
-    const redirectToDashboard = async () => {
-      if (currentUser) {
-        const { data: empresa } = await supabase
-          .from('empresas')
-          .select('slug')
-          .eq('admin_id', currentUser.id)
-          .single();
+    if (currentUser) {
+      const params = new URLSearchParams(location.search);
+      const redirectSlug = params.get('redirectSlug');
 
-        if (empresa && currentUser.role === 'admin') {
-          navigate(`/${empresa.slug}/admin-dashboard`, { replace: true });
-        } else if (empresa && currentUser.role === 'entregador') {
-          navigate(`/${empresa.slug}/entregador`, { replace: true });
+      if (redirectSlug) {
+        if (currentUser.empresa_id !== redirectSlug && currentUser.role === 'admin') {
+          toast({
+            title: "Acesso Negado",
+            description: "Você está logado em outra conta. Por favor, saia para acessar esta empresa.",
+            variant: "destructive"
+          });
+          logOut();
+          return;
+        }
+        if (currentUser.role === 'admin') {
+            navigate(`/${redirectSlug}/admin-dashboard`, { replace: true });
+        } else if (currentUser.role === 'entregador') {
+            navigate(`/${redirectSlug}/entregador`, { replace: true });
         } else {
-          navigate(`/${slug}`, { replace: true });
+            navigate(`/${redirectSlug}`, { replace: true });
+        }
+      } else {
+        if (currentUser.role === 'admin' && currentUser.empresa_id) {
+          const getEmpresaSlug = async () => {
+            const { data } = await supabase
+              .from('empresas')
+              .select('slug')
+              .eq('id', currentUser.empresa_id)
+              .single();
+            if (data) navigate(`/${data.slug}/admin-dashboard`, { replace: true });
+            else navigate('/', { replace: true });
+          };
+          getEmpresaSlug();
+        } else if (currentUser.role === 'entregador' && currentUser.empresa_id) {
+            const getEmpresaSlug = async () => {
+                const { data } = await supabase
+                  .from('empresas')
+                  .select('slug')
+                  .eq('id', currentUser.empresa_id)
+                  .single();
+                if (data) navigate(`/${data.slug}/entregador`, { replace: true });
+                else navigate('/', { replace: true });
+              };
+              getEmpresaSlug();
+        } else {
+          navigate('/', { replace: true });
         }
       }
-    };
-    redirectToDashboard();
-  }, [currentUser, navigate, slug]);
-
+    }
+  }, [currentUser, navigate, location.search, location.pathname, logOut, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setError("");
       setLoading(true);
-      
-      const authResult = await signIn(email, password);
-      
-      if (!authResult || authResult.error) {
-        throw authResult.error;
-      }
-      
+      await signIn(email, password);
       toast({
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
       });
-
-      // A navegação será tratada pelo useEffect de redirecionamento, que é acionado
-      // quando o estado do currentUser é atualizado com sucesso
-      
-    } catch (e: any) {
-      setError(e.message || "Falha ao fazer login. Verifique seu email e senha.");
+    } catch (e) {
+      setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
       setLoading(false);
     }
