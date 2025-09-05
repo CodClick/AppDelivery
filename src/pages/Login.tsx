@@ -18,13 +18,45 @@ const Login = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (currentUser) {
-      const params = new URLSearchParams(location.search);
-      const redirectSlug = params.get('redirectSlug');
+  // NOVO: Estados para armazenar os dados da empresa (logo e nome)
+  const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
+  const [isCompanyPage, setIsCompanyPage] = useState(false);
 
+  useEffect(() => {
+    // Busca o slug da URL
+    const params = new URLSearchParams(location.search);
+    const redirectSlug = params.get('redirectSlug');
+
+    // NOVO: Função para buscar o logo da empresa com base no slug
+    const fetchCompanyLogo = async (slug) => {
+      const { data, error } = await supabase
+        .from('empresas')
+        .select('logo_url, empresa_id') // `empresa_id` é o nome da coluna com o nome da empresa
+        .eq('slug', slug)
+        .single();
+
+      if (data) {
+        setCompanyData({ logo_url: data.logo_url, name: data.empresa_id });
+        setIsCompanyPage(true); // Indica que estamos numa página específica de empresa
+      } else {
+        console.error("Empresa não encontrada ou erro:", error);
+        setCompanyData({ logo_url: "", name: "" });
+        setIsCompanyPage(false);
+      }
+    };
+
+    if (redirectSlug) {
+      fetchCompanyLogo(redirectSlug);
+    } else {
+      // Se não há slug, limpa os dados da empresa e mostra a página genérica
+      setCompanyData({ logo_url: "", name: "" });
+      setIsCompanyPage(false);
+    }
+
+    // Lógica de redirecionamento do usuário já logado
+    if (currentUser) {
+      // ... (sua lógica original, sem modificações)
       if (redirectSlug) {
-        // Se a empresa_id do usuário não corresponder ao slug, nega o acesso e desloga
         if (currentUser.empresa_id !== redirectSlug && currentUser.role === 'admin') {
           toast({
             title: "Acesso Negado",
@@ -34,19 +66,14 @@ const Login = () => {
           logOut();
           return;
         }
-
-        // Se o slug corresponder, redireciona para a página apropriada
         if (currentUser.role === 'admin') {
             navigate(`/${redirectSlug}/admin-dashboard`, { replace: true });
         } else if (currentUser.role === 'entregador') {
-            // Novo: Redirecionamento para entregadores
             navigate(`/${redirectSlug}/entregador`, { replace: true });
         } else {
-            // O usuário não é admin ou entregador (cliente/desconhecido), redireciona para a página principal
             navigate(`/${redirectSlug}`, { replace: true });
         }
       } else {
-        // Redirecionamento padrão caso não haja slug na URL
         if (currentUser.role === 'admin' && currentUser.empresa_id) {
           const getEmpresaSlug = async () => {
             const { data } = await supabase
@@ -59,7 +86,6 @@ const Login = () => {
           };
           getEmpresaSlug();
         } else if (currentUser.role === 'entregador' && currentUser.empresa_id) {
-            // Novo: Redirecionamento padrão para entregadores
             const getEmpresaSlug = async () => {
                 const { data } = await supabase
                   .from('empresas')
@@ -71,7 +97,6 @@ const Login = () => {
               };
               getEmpresaSlug();
         } else {
-          // Lida com roles de 'cliente' e 'desconhecido' sem slug de redirecionamento
           navigate('/', { replace: true });
         }
       }
@@ -80,12 +105,10 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
       setError("");
       setLoading(true);
       await signIn(email, password);
-      // O useEffect lidará com o redirecionamento após o login
       toast({
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
@@ -100,6 +123,19 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-md">
+        
+        {/* NOVO: Renderiza o logo e o nome da empresa se eles existirem */}
+        {isCompanyPage && companyData.logo_url && (
+          <div className="text-center">
+            <img 
+              src={companyData.logo_url} 
+              alt={`Logo ${companyData.name}`} 
+              className="mx-auto h-20 w-auto rounded-lg"
+            />
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">{companyData.name}</h1>
+          </div>
+        )}
+
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">Entrar</h2>
           <p className="mt-2 text-sm text-gray-600">
