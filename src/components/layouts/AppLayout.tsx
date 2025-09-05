@@ -23,7 +23,7 @@ const AppLayout = () => {
           </Button>
         ) : (
           <Button asChild>
-            <Link to="/login">Entrar</Link>
+            <Link to={`/${slug}/login`}>Entrar</Link>
           </Button>
         )}
       </div>
