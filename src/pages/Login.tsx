@@ -13,7 +13,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, currentUser, logOut } = useAuth();
+  const { signIn, currentUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -21,8 +21,8 @@ const Login = () => {
 
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
+  // NOVO: Efeito para buscar os dados da empresa (logo/nome)
   useEffect(() => {
-    // Se não houver slug na URL, não fazemos a busca
     if (!slug) {
       setCompanyData({ logo_url: "", name: "" });
       return;
@@ -46,39 +46,48 @@ const Login = () => {
 
   }, [slug]);
 
-  // CORREÇÃO: Lógica para garantir que o usuário está deslogado ao chegar na página de login
+  // NOVO: Efeito para redirecionar o usuário se ele já estiver logado
   useEffect(() => {
-    if (currentUser) {
-      logOut();
-      // O Supabase irá atualizar o estado e este useEffect será acionado novamente com currentUser = null
-      // A navegação será tratada na página principal após o login ser bem-sucedido
-    }
-  }, [currentUser, logOut]);
+    const redirectToDashboard = async () => {
+      if (currentUser) {
+        // Encontra o slug da empresa do usuário logado
+        const { data: empresa, error: empresaError } = await supabase
+          .from('empresas')
+          .select('slug')
+          .eq('admin_id', currentUser.id)
+          .single();
+
+        if (empresa && currentUser.role === 'admin') {
+          navigate(`/${empresa.slug}/admin-dashboard`, { replace: true });
+        } else if (empresa && currentUser.role === 'entregador') {
+          navigate(`/${empresa.slug}/entregador`, { replace: true });
+        } else {
+          // Redireciona para a página principal se o slug da empresa não for encontrado
+          navigate('/', { replace: true });
+        }
+      }
+    };
+    redirectToDashboard();
+  }, [currentUser, navigate]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setError("");
       setLoading(true);
+      
       const { data, error } = await signIn(email, password);
       
-      if (error) throw error;
-
-      // Navega para a página correta após o login
-      const user = data.user;
-      const { data: empresaData, error: empresaError } = await supabase
-        .from('empresas')
-        .select('slug')
-        .eq('admin_id', user.id)
-        .single();
-
-      if (empresaData) {
-        navigate(`/${empresaData.slug}/admin-dashboard`, { replace: true });
-      } else {
-        // Lógica para usuários que não são admin
-        navigate(`/${slug}`, { replace: true });
+      if (error) {
+        throw error;
       }
-
+      
+      toast({
+        title: "Login realizado com sucesso",
+        description: "Você foi conectado à sua conta",
+      });
+      // A navegação será tratada pelo useEffect de redirecionamento
     } catch (e) {
       setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
