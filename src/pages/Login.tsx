@@ -52,7 +52,7 @@ const Login = () => {
       if (currentUser) {
         const { data: empresa } = await supabase
           .from('empresas')
-          .select('slug, role')
+          .select('slug')
           .eq('admin_id', currentUser.id)
           .single();
 
@@ -61,12 +61,12 @@ const Login = () => {
         } else if (empresa && currentUser.role === 'entregador') {
           navigate(`/${empresa.slug}/entregador`, { replace: true });
         } else {
-          navigate('/', { replace: true });
+          navigate(`/${slug}`, { replace: true });
         }
       }
     };
     redirectToDashboard();
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, slug]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,10 +75,10 @@ const Login = () => {
       setError("");
       setLoading(true);
       
-      const { data: authData, error: authError } = await signIn(email, password);
+      const authResult = await signIn(email, password);
       
-      if (authError) {
-        throw authError;
+      if (!authResult || authResult.error) {
+        throw authResult.error;
       }
       
       toast({
