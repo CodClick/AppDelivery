@@ -21,7 +21,7 @@ const Login = () => {
 
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
-  // NOVO: Efeito para buscar os dados da empresa (logo/nome)
+  // Efeito 1: Busca os dados da empresa (logo/nome) com base no slug da URL
   useEffect(() => {
     if (!slug) {
       setCompanyData({ logo_url: "", name: "" });
@@ -46,14 +46,13 @@ const Login = () => {
 
   }, [slug]);
 
-  // NOVO: Efeito para redirecionar o usuário se ele já estiver logado
+  // Efeito 2: Redireciona o usuário se ele já estiver logado
   useEffect(() => {
     const redirectToDashboard = async () => {
       if (currentUser) {
-        // Encontra o slug da empresa do usuário logado
-        const { data: empresa, error: empresaError } = await supabase
+        const { data: empresa } = await supabase
           .from('empresas')
-          .select('slug')
+          .select('slug, role')
           .eq('admin_id', currentUser.id)
           .single();
 
@@ -62,7 +61,6 @@ const Login = () => {
         } else if (empresa && currentUser.role === 'entregador') {
           navigate(`/${empresa.slug}/entregador`, { replace: true });
         } else {
-          // Redireciona para a página principal se o slug da empresa não for encontrado
           navigate('/', { replace: true });
         }
       }
@@ -77,19 +75,22 @@ const Login = () => {
       setError("");
       setLoading(true);
       
-      const { data, error } = await signIn(email, password);
+      const { data: authData, error: authError } = await signIn(email, password);
       
-      if (error) {
-        throw error;
+      if (authError) {
+        throw authError;
       }
       
       toast({
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
       });
-      // A navegação será tratada pelo useEffect de redirecionamento
-    } catch (e) {
-      setError("Falha ao fazer login. Verifique seu email e senha.");
+
+      // A navegação será tratada pelo useEffect de redirecionamento, que é acionado
+      // quando o estado do currentUser é atualizado com sucesso
+      
+    } catch (e: any) {
+      setError(e.message || "Falha ao fazer login. Verifique seu email e senha.");
     } finally {
       setLoading(false);
     }
