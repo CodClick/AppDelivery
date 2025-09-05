@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -17,52 +17,16 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  
-  // NOVO: Lê o slug diretamente dos parâmetros da rota
-  const { slug } = useParams();
-
-  const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
   useEffect(() => {
-    // Agora o slug é obtido diretamente de useParams()
-    let currentSlug = slug;
-
-    // Lógica para compatibilidade: se o slug não estiver na URL, tenta o parâmetro de query
-    if (!currentSlug) {
-      const params = new URLSearchParams(location.search);
-      currentSlug = params.get('redirectSlug');
-    }
-
-    if (!currentSlug) {
-      setCompanyData({ logo_url: "", name: "" });
-      return;
-    }
-
-    const fetchCompanyData = async () => {
-      const { data, error } = await supabase
-        .from('empresas')
-        .select('logo_url, nome')
-        .eq('slug', currentSlug)
-        .single();
-        
-      if (data) {
-        setCompanyData({ logo_url: data.logo_url, name: data.nome });
-      } else {
-        setCompanyData({ logo_url: "", name: "" });
-      }
-    };
-    
-    fetchCompanyData();
-
-  }, [slug, location.search]); // Dependência: agora depende de slug E location.search para compatibilidade.
-
-  useEffect(() => {
+    // 1. Lógica de redirecionamento para usuários já logados
     if (currentUser) {
       const params = new URLSearchParams(location.search);
       const redirectSlug = params.get('redirectSlug');
 
       if (redirectSlug) {
-        if (currentUser.empresa_id !== redirectSlug && currentUser.role === 'admin') {
+        // Se a empresa_id do usuário não corresponder ao slug, nega o acesso e desloga
+        if (currentUser.empresa_id !== redirectSlug) {
           toast({
             title: "Acesso Negado",
             description: "Você está logado em outra conta. Por favor, saia para acessar esta empresa.",
@@ -71,14 +35,15 @@ const Login = () => {
           logOut();
           return;
         }
+
+        // Se o slug corresponder, redireciona para a página do restaurante
         if (currentUser.role === 'admin') {
-            navigate(`/${redirectSlug}/admin-dashboard`, { replace: true });
-        } else if (currentUser.role === 'entregador') {
-            navigate(`/${redirectSlug}/entregador`, { replace: true });
+            navigate(`/${redirectSlug}/admin`, { replace: true });
         } else {
             navigate(`/${redirectSlug}`, { replace: true });
         }
       } else {
+        // Redirecionamento padrão para a área de admin, caso não haja slug
         if (currentUser.role === 'admin' && currentUser.empresa_id) {
           const getEmpresaSlug = async () => {
             const { data } = await supabase
@@ -86,34 +51,25 @@ const Login = () => {
               .select('slug')
               .eq('id', currentUser.empresa_id)
               .single();
-            if (data) navigate(`/${data.slug}/admin-dashboard`, { replace: true });
+            if (data) navigate(`/${data.slug}/admin`, { replace: true });
             else navigate('/', { replace: true });
           };
           getEmpresaSlug();
-        } else if (currentUser.role === 'entregador' && currentUser.empresa_id) {
-            const getEmpresaSlug = async () => {
-                const { data } = await supabase
-                  .from('empresas')
-                  .select('slug')
-                  .eq('id', currentUser.empresa_id)
-                  .single();
-                if (data) navigate(`/${data.slug}/entregador`, { replace: true });
-                else navigate('/', { replace: true });
-              };
-              getEmpresaSlug();
         } else {
           navigate('/', { replace: true });
         }
       }
     }
-  }, [currentUser, navigate, location.search, location.pathname, logOut, toast]);
+  }, [currentUser, navigate, location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
       setError("");
       setLoading(true);
       await signIn(email, password);
+      // O useEffect lidará com o redirecionamento após o login
       toast({
         title: "Login realizado com sucesso",
         description: "Você foi conectado à sua conta",
@@ -128,27 +84,15 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-md">
-        
-        {companyData.logo_url ? (
-          <div className="text-center">
-            <img 
-              src={companyData.logo_url} 
-              alt={`Logo ${companyData.name}`} 
-              className="mx-auto h-20 w-auto rounded-lg"
-            />
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">{companyData.name}</h1>
-          </div>
-        ) : (
-          <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900">Entrar</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Ou{" "}
-              <Link to="/register" className="font-medium text-brand hover:text-brand-600">
-                criar uma nova conta
-              </Link>
-            </p>
-          </div>
-        )}
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900">Entrar</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Ou{" "}
+            <Link to="/register" className="font-medium text-brand hover:text-brand-600">
+              criar uma nova conta
+            </Link>
+          </p>
+        </div>
         
         {error && (
           <Alert variant="destructive">
