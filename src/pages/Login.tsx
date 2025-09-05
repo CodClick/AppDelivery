@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -15,25 +15,15 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { signIn, currentUser, logOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   
-  // NOVO: Lê o slug diretamente dos parâmetros da rota
   const { slug } = useParams();
 
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
   useEffect(() => {
-    // Agora o slug é obtido diretamente de useParams()
-    let currentSlug = slug;
-
-    // Lógica para compatibilidade: se o slug não estiver na URL, tenta o parâmetro de query
-    if (!currentSlug) {
-      const params = new URLSearchParams(location.search);
-      currentSlug = params.get('redirectSlug');
-    }
-
-    if (!currentSlug) {
+    // Se não houver slug na URL, não fazemos a busca
+    if (!slug) {
       setCompanyData({ logo_url: "", name: "" });
       return;
     }
@@ -42,7 +32,7 @@ const Login = () => {
       const { data, error } = await supabase
         .from('empresas')
         .select('logo_url, nome')
-        .eq('slug', currentSlug)
+        .eq('slug', slug)
         .single();
         
       if (data) {
@@ -54,70 +44,41 @@ const Login = () => {
     
     fetchCompanyData();
 
-  }, [slug, location.search]); // Dependência: agora depende de slug E location.search para compatibilidade.
+  }, [slug]);
 
+  // CORREÇÃO: Lógica para garantir que o usuário está deslogado ao chegar na página de login
   useEffect(() => {
     if (currentUser) {
-      const params = new URLSearchParams(location.search);
-      const redirectSlug = params.get('redirectSlug');
-
-      if (redirectSlug) {
-        if (currentUser.empresa_id !== redirectSlug && currentUser.role === 'admin') {
-          toast({
-            title: "Acesso Negado",
-            description: "Você está logado em outra conta. Por favor, saia para acessar esta empresa.",
-            variant: "destructive"
-          });
-          logOut();
-          return;
-        }
-        if (currentUser.role === 'admin') {
-            navigate(`/${redirectSlug}/admin-dashboard`, { replace: true });
-        } else if (currentUser.role === 'entregador') {
-            navigate(`/${redirectSlug}/entregador`, { replace: true });
-        } else {
-            navigate(`/${redirectSlug}`, { replace: true });
-        }
-      } else {
-        if (currentUser.role === 'admin' && currentUser.empresa_id) {
-          const getEmpresaSlug = async () => {
-            const { data } = await supabase
-              .from('empresas')
-              .select('slug')
-              .eq('id', currentUser.empresa_id)
-              .single();
-            if (data) navigate(`/${data.slug}/admin-dashboard`, { replace: true });
-            else navigate('/', { replace: true });
-          };
-          getEmpresaSlug();
-        } else if (currentUser.role === 'entregador' && currentUser.empresa_id) {
-            const getEmpresaSlug = async () => {
-                const { data } = await supabase
-                  .from('empresas')
-                  .select('slug')
-                  .eq('id', currentUser.empresa_id)
-                  .single();
-                if (data) navigate(`/${data.slug}/entregador`, { replace: true });
-                else navigate('/', { replace: true });
-              };
-              getEmpresaSlug();
-        } else {
-          navigate('/', { replace: true });
-        }
-      }
+      logOut();
+      // O Supabase irá atualizar o estado e este useEffect será acionado novamente com currentUser = null
+      // A navegação será tratada na página principal após o login ser bem-sucedido
     }
-  }, [currentUser, navigate, location.search, location.pathname, logOut, toast]);
+  }, [currentUser, logOut]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setError("");
       setLoading(true);
-      await signIn(email, password);
-      toast({
-        title: "Login realizado com sucesso",
-        description: "Você foi conectado à sua conta",
-      });
+      const { data, error } = await signIn(email, password);
+      
+      if (error) throw error;
+
+      // Navega para a página correta após o login
+      const user = data.user;
+      const { data: empresaData, error: empresaError } = await supabase
+        .from('empresas')
+        .select('slug')
+        .eq('admin_id', user.id)
+        .single();
+
+      if (empresaData) {
+        navigate(`/${empresaData.slug}/admin-dashboard`, { replace: true });
+      } else {
+        // Lógica para usuários que não são admin
+        navigate(`/${slug}`, { replace: true });
+      }
+
     } catch (e) {
       setError("Falha ao fazer login. Verifique seu email e senha.");
     } finally {
