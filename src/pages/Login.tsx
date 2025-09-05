@@ -20,7 +20,6 @@ const Login = () => {
 
   // NOVO: Estados para armazenar os dados da empresa (logo e nome)
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
-  const [isCompanyPage, setIsCompanyPage] = useState(false);
 
   useEffect(() => {
     // Busca o slug da URL
@@ -28,34 +27,31 @@ const Login = () => {
     const redirectSlug = params.get('redirectSlug');
 
     // NOVO: Função para buscar o logo da empresa com base no slug
-    const fetchCompanyLogo = async (slug) => {
+    const fetchCompanyData = async (slug) => {
       const { data, error } = await supabase
         .from('empresas')
-        .select('logo_url, empresa_id') // `empresa_id` é o nome da coluna com o nome da empresa
+        .select('logo_url, empresa_id')
         .eq('slug', slug)
         .single();
 
       if (data) {
         setCompanyData({ logo_url: data.logo_url, name: data.empresa_id });
-        setIsCompanyPage(true); // Indica que estamos numa página específica de empresa
       } else {
-        console.error("Empresa não encontrada ou erro:", error);
+        // Limpa os dados se a empresa não for encontrada
         setCompanyData({ logo_url: "", name: "" });
-        setIsCompanyPage(false);
+        console.error("Empresa não encontrada ou erro:", error);
       }
     };
 
     if (redirectSlug) {
-      fetchCompanyLogo(redirectSlug);
+      fetchCompanyData(redirectSlug);
     } else {
       // Se não há slug, limpa os dados da empresa e mostra a página genérica
       setCompanyData({ logo_url: "", name: "" });
-      setIsCompanyPage(false);
     }
 
     // Lógica de redirecionamento do usuário já logado
     if (currentUser) {
-      // ... (sua lógica original, sem modificações)
       if (redirectSlug) {
         if (currentUser.empresa_id !== redirectSlug && currentUser.role === 'admin') {
           toast({
@@ -101,7 +97,7 @@ const Login = () => {
         }
       }
     }
-  }, [currentUser, navigate, location.search]);
+  }, [currentUser, navigate, location.search, location.pathname]); // Adicionado location.pathname para re-renderizar quando a URL mudar
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +121,7 @@ const Login = () => {
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-md">
         
         {/* NOVO: Renderiza o logo e o nome da empresa se eles existirem */}
-        {isCompanyPage && companyData.logo_url && (
+        {companyData.logo_url ? (
           <div className="text-center">
             <img 
               src={companyData.logo_url} 
@@ -134,17 +130,17 @@ const Login = () => {
             />
             <h1 className="mt-4 text-2xl font-bold text-gray-900">{companyData.name}</h1>
           </div>
+        ) : (
+          <div className="text-center">
+            <h2 className="text-3xl font-extrabold text-gray-900">Entrar</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Ou{" "}
+              <Link to="/register" className="font-medium text-brand hover:text-brand-600">
+                criar uma nova conta
+              </Link>
+            </p>
+          </div>
         )}
-
-        <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">Entrar</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Ou{" "}
-            <Link to="/register" className="font-medium text-brand hover:text-brand-600">
-              criar uma nova conta
-            </Link>
-          </p>
-        </div>
         
         {error && (
           <Alert variant="destructive">
