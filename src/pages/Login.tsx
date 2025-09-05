@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -17,38 +17,44 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  
+  // NOVO: Lê o slug diretamente dos parâmetros da rota
+  const { slug } = useParams();
 
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const redirectSlug = params.get('redirectSlug');
-    
-    if (!redirectSlug) {
+    // Agora o slug é obtido diretamente de useParams()
+    let currentSlug = slug;
+
+    // Lógica para compatibilidade: se o slug não estiver na URL, tenta o parâmetro de query
+    if (!currentSlug) {
+      const params = new URLSearchParams(location.search);
+      currentSlug = params.get('redirectSlug');
+    }
+
+    if (!currentSlug) {
       setCompanyData({ logo_url: "", name: "" });
       return;
     }
 
     const fetchCompanyData = async () => {
-      // CORREÇÃO: Usando 'nome' no lugar de 'empresa_id' na consulta SELECT
       const { data, error } = await supabase
         .from('empresas')
         .select('logo_url, nome')
-        .eq('slug', redirectSlug)
+        .eq('slug', currentSlug)
         .single();
         
       if (data) {
-        // CORREÇÃO: Usando 'data.nome' para a propriedade 'name' do estado
         setCompanyData({ logo_url: data.logo_url, name: data.nome });
       } else {
-        console.error("Erro ou empresa não encontrada. Erro do Supabase:", error);
         setCompanyData({ logo_url: "", name: "" });
       }
     };
     
     fetchCompanyData();
 
-  }, [location.search]);
+  }, [slug, location.search]); // Dependência: agora depende de slug E location.search para compatibilidade.
 
   useEffect(() => {
     if (currentUser) {
@@ -222,4 +228,3 @@ const Login = () => {
 };
 
 export default Login;
-                    
