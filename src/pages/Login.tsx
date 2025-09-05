@@ -26,24 +26,22 @@ const Login = () => {
     
     if (!redirectSlug) {
       setCompanyData({ logo_url: "", name: "" });
-      console.log("LOG: Não há slug de redirecionamento. Estado da empresa limpo.");
       return;
     }
 
     const fetchCompanyData = async () => {
-      console.log("LOG: Iniciando busca de dados da empresa para o slug:", redirectSlug);
+      // CORREÇÃO: Usando 'nome' no lugar de 'empresa_id' na consulta SELECT
       const { data, error } = await supabase
         .from('empresas')
-        .select('logo_url, empresa_id')
+        .select('logo_url, nome')
         .eq('slug', redirectSlug)
         .single();
         
       if (data) {
-        console.log("LOG: Dados da empresa encontrados. Atualizando o estado.");
-        console.log("LOG: Dados recebidos do Supabase:", data);
-        setCompanyData({ logo_url: data.logo_url, name: data.empresa_id });
+        // CORREÇÃO: Usando 'data.nome' para a propriedade 'name' do estado
+        setCompanyData({ logo_url: data.logo_url, name: data.nome });
       } else {
-        console.error("LOG: Erro ou empresa não encontrada. Erro do Supabase:", error);
+        console.error("Erro ou empresa não encontrada. Erro do Supabase:", error);
         setCompanyData({ logo_url: "", name: "" });
       }
     };
@@ -52,7 +50,6 @@ const Login = () => {
 
   }, [location.search]);
 
-  // useEffect para lidar com o redirecionamento do usuário
   useEffect(() => {
     if (currentUser) {
       const params = new URLSearchParams(location.search);
@@ -122,13 +119,10 @@ const Login = () => {
     }
   };
 
-  console.log("LOG: Estado atual do companyData (antes da renderização):", companyData);
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-md">
         
-        {/* Renderiza o logo ou o título padrão */}
         {companyData.logo_url ? (
           <div className="text-center">
             <img 
@@ -228,3 +222,4 @@ const Login = () => {
 };
 
 export default Login;
+                    
