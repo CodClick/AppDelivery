@@ -18,22 +18,20 @@ const Login = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  // Estado para armazenar os dados da empresa (logo e nome)
   const [companyData, setCompanyData] = useState({ logo_url: "", name: "" });
 
-  // NOVO useEffect: Dedicado EXCLUSIVAMENTE à busca dos dados da empresa.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const redirectSlug = params.get('redirectSlug');
     
-    // Se não houver slug, não fazemos nada.
     if (!redirectSlug) {
       setCompanyData({ logo_url: "", name: "" });
+      console.log("LOG: Não há slug de redirecionamento. Estado da empresa limpo.");
       return;
     }
 
     const fetchCompanyData = async () => {
-      console.log("Buscando dados da empresa para o slug:", redirectSlug); // Log de depuração
+      console.log("LOG: Iniciando busca de dados da empresa para o slug:", redirectSlug);
       const { data, error } = await supabase
         .from('empresas')
         .select('logo_url, empresa_id')
@@ -41,19 +39,20 @@ const Login = () => {
         .single();
         
       if (data) {
-        console.log("Dados da empresa encontrados:", data); // Log de sucesso
+        console.log("LOG: Dados da empresa encontrados. Atualizando o estado.");
+        console.log("LOG: Dados recebidos do Supabase:", data);
         setCompanyData({ logo_url: data.logo_url, name: data.empresa_id });
       } else {
-        console.error("Empresa não encontrada ou erro:", error); // Log de erro
+        console.error("LOG: Erro ou empresa não encontrada. Erro do Supabase:", error);
         setCompanyData({ logo_url: "", name: "" });
       }
     };
     
     fetchCompanyData();
 
-  }, [location.search]); // Dependência: só roda quando o parâmetro da URL mudar.
+  }, [location.search]);
 
-  // MANTIDO: useEffect original para lidar com o redirecionamento do usuário
+  // useEffect para lidar com o redirecionamento do usuário
   useEffect(() => {
     if (currentUser) {
       const params = new URLSearchParams(location.search);
@@ -122,6 +121,8 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  console.log("LOG: Estado atual do companyData (antes da renderização):", companyData);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
