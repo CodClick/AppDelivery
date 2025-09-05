@@ -19,14 +19,13 @@ const Login = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // 1. Lógica de redirecionamento para usuários já logados
     if (currentUser) {
       const params = new URLSearchParams(location.search);
       const redirectSlug = params.get('redirectSlug');
 
       if (redirectSlug) {
         // Se a empresa_id do usuário não corresponder ao slug, nega o acesso e desloga
-        if (currentUser.empresa_id !== redirectSlug) {
+        if (currentUser.empresa_id !== redirectSlug && currentUser.role === 'admin') {
           toast({
             title: "Acesso Negado",
             description: "Você está logado em outra conta. Por favor, saia para acessar esta empresa.",
@@ -36,14 +35,18 @@ const Login = () => {
           return;
         }
 
-        // Se o slug corresponder, redireciona para a página do restaurante
+        // Se o slug corresponder, redireciona para a página apropriada
         if (currentUser.role === 'admin') {
-            navigate(`/${redirectSlug}/admin`, { replace: true });
+            navigate(`/${redirectSlug}/admin-dashboard`, { replace: true });
+        } else if (currentUser.role === 'entregador') {
+            // Novo: Redirecionamento para entregadores
+            navigate(`/${redirectSlug}/entregador`, { replace: true });
         } else {
+            // O usuário não é admin ou entregador (cliente/desconhecido), redireciona para a página principal
             navigate(`/${redirectSlug}`, { replace: true });
         }
       } else {
-        // Redirecionamento padrão para a área de admin, caso não haja slug
+        // Redirecionamento padrão caso não haja slug na URL
         if (currentUser.role === 'admin' && currentUser.empresa_id) {
           const getEmpresaSlug = async () => {
             const { data } = await supabase
@@ -51,11 +54,24 @@ const Login = () => {
               .select('slug')
               .eq('id', currentUser.empresa_id)
               .single();
-            if (data) navigate(`/${data.slug}/admin`, { replace: true });
+            if (data) navigate(`/${data.slug}/admin-dashboard`, { replace: true });
             else navigate('/', { replace: true });
           };
           getEmpresaSlug();
+        } else if (currentUser.role === 'entregador' && currentUser.empresa_id) {
+            // Novo: Redirecionamento padrão para entregadores
+            const getEmpresaSlug = async () => {
+                const { data } = await supabase
+                  .from('empresas')
+                  .select('slug')
+                  .eq('id', currentUser.empresa_id)
+                  .single();
+                if (data) navigate(`/${data.slug}/entregador`, { replace: true });
+                else navigate('/', { replace: true });
+              };
+              getEmpresaSlug();
         } else {
+          // Lida com roles de 'cliente' e 'desconhecido' sem slug de redirecionamento
           navigate('/', { replace: true });
         }
       }
